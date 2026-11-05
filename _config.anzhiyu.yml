@@ -1106,7 +1106,7 @@ console:
 # 51a统计配置
 LA:
   enable: false
-  ck:
+  ck: 3RjVQLUuAHCKzPej
   LingQueMonitorID:
 
 # 标签卖萌
@@ -1242,6 +1242,8 @@ dynamicEffect:
 inject:
   head:
     - <link rel="stylesheet" href="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css">
+    - <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+    - <script>LA.init({id:"3RjVQLUuAHCKzPej",ck:"3RjVQLUuAHCKzPej",autoTrack:true,hashMode:true})</script>
   bottom:
     - <script defer src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
     - <script defer src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],throwOnError:false});"></script>

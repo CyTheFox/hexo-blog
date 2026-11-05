@@ -1,0 +1,40 @@
+name: Build and Deploy Hexo Blog
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: |
+          npm install
+
+      - name: Generate Static Site
+        run: |
+          npx hexo clean
+          npx hexo generate
+
+      - name: Deploy to Server via SSH
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          ARGS: "-rlgoDzvc -i --delete"
+          SOURCE: "public/"
+          REMOTE_HOST: "59.110.213.166"
+          REMOTE_USER: "dsbot"
+          TARGET: "/home/dsbot/blog/public/"
+          EXCLUDE: "/.git/, /node_modules/"

@@ -1,0 +1,66 @@
+# Butterfly overrides; defaults are inherited from the installed theme.
+# Keep personal settings here so npm theme upgrades do not overwrite them.
+nav:
+  fixed: true
+
+menu:
+  首页: / || fas fa-home
+  归档: /archives/ || fas fa-archive
+  标签: /tags/ || fas fa-tags
+  分类: /categories/ || fas fa-folder-open
+  关于: /about/ || fas fa-user
+
+index_top_img_height: 50vh
+subtitle:
+  enable: true
+  effect: false
+  source: false
+  sub:
+    - 记录生活，分享技术
+
+# Use theme-provided local images instead of external image services.
+favicon: /img/favicon.ico
+avatar:
+  img: /img/butterfly-icon.png
+  effect: false
+cover:
+  index_enable: false
+  aside_enable: false
+  archives_enable: false
+
+aside:
+  card_author:
+    description: 欢迎来到我的个人博客
+    button:
+      enable: false
+  card_announcement:
+    enable: true
+    content: 欢迎来访！这里记录学习笔记、技术实践与日常生活。
+
+footer:
+  owner:
+    enable: true
+    since: 2026
+
+darkmode:
+  enable: true
+  button: true
+  autoChangeMode: 1
+
+search:
+  use: local_search
+  placeholder: 搜索文章
+  local_search:
+    preload: false
+
+# Avoid unsolicited external visitor statistics.
+busuanzi:
+  site_uv: false
+  site_pv: false
+  page_pv: false
+
+# Serve third-party assets locally for reliability.
+CDN:
+  internal_provider: local
+  third_party_provider: local
+  version: true

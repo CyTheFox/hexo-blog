@@ -1236,10 +1236,11 @@ dynamicEffect:
 # 插入代码到头部 </head> 之前 和 底部 </body> 之前
 inject:
   head:
-    # 自定义css
-    # - <link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'">
-
+    - <link rel="stylesheet" href="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css">
   bottom:
+    - <script defer src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
+    - <script defer src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],throwOnError:false});"></script>
+    - <script>document.addEventListener("pjax:complete",function(){if(window.renderMathInElement){renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],throwOnError:false});}});</script>
     # 自定义js
     # - <script src="/js/xxx"></script>
 

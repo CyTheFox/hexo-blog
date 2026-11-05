@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>博客管理后台 - Decap CMS</title>
+  <!-- KaTeX CSS -->
+  <link rel="stylesheet" href="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css" />
 </head>
 <body>
   <script>
@@ -17,6 +19,100 @@
       };
     }
   </script>
+
+  <!-- KaTeX core & auto-render -->
+  <script src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Decap CMS -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+
+  <script>
+    // 1. 注册 KaTeX 样式表到 Decap CMS 预览区
+    CMS.registerPreviewStyle("https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css");
+
+    // 2. 注册可视化编辑器组件：数学公式 (KaTeX)
+    CMS.registerEditorComponent({
+      id: "katex",
+      label: "数学公式 (KaTeX)",
+      fields: [
+        { name: "formula", label: "LaTeX 公式代码", widget: "text" },
+        { name: "block", label: "独占一行 (Block)", widget: "boolean", default: true }
+      ],
+      pattern: /(?:^\$\$\s*([\s\S]*?)\s*\$\$|\$([^\$\n]+)\$)/m,
+      fromBlock: function(match) {
+        return {
+          formula: match[1] || match[2] || "",
+          block: Boolean(match[1])
+        };
+      },
+      toBlock: function(obj) {
+        if (obj.block) {
+          return "$$\n" + (obj.formula || "").trim() + "\n$$";
+        }
+        return "$" + (obj.formula || "").trim() + "$";
+      },
+      toPreview: function(obj) {
+        try {
+          return window.katex.renderToString(obj.formula || "", {
+            displayMode: obj.block,
+            throwOnError: false
+          });
+        } catch (e) {
+          return '<span style="color:red">KaTeX Error: ' + e.message + '</span>';
+        }
+      }
+    });
+
+    // 3. 监听右侧实时预览 iframe，当输入 $...$ 或 $$...$$ 时实时渲染
+    (function watchPreview() {
+      function renderMathInDoc(doc) {
+        if (!doc || !doc.body || !window.renderMathInElement) return;
+        try {
+          window.renderMathInElement(doc.body, {
+            delimiters: [
+              { left: "$$", right: "$$", display: true },
+              { left: "$", right: "$", display: false },
+              { left: "\\(", right: "\\)", display: false },
+              { left: "\\[", right: "\\]", display: true }
+            ],
+            throwOnError: false
+          });
+        } catch(e) {}
+      }
+
+      var observer = new MutationObserver(function() {
+        var iframes = document.querySelectorAll("iframe");
+        iframes.forEach(function(iframe) {
+          try {
+            var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+            if (doc && doc.body && !doc.__katexAttached) {
+              doc.__katexAttached = true;
+              if (!doc.querySelector('link[href*="katex"]')) {
+                var link = doc.createElement("link");
+                link.rel = "stylesheet";
+                link.href = "https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css";
+                doc.head.appendChild(link);
+              }
+              var timer = null;
+              var debouncedRender = function() {
+                clearTimeout(timer);
+                timer = setTimeout(function() {
+                  renderMathInDoc(doc);
+                }, 100);
+              };
+              new MutationObserver(debouncedRender).observe(doc.body, {
+                childList: true,
+                subtree: true,
+                characterData: true
+              });
+              renderMathInDoc(doc);
+            }
+          } catch(err) {}
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>

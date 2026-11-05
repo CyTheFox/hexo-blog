@@ -21,7 +21,16 @@ hexo.extend.filter.register('after_render:html', function(html, data) {
     '    <div class="item-name">Github :</div>',
     '  </div>',
     '  <div class="item-count">',
-    '    <a href="https://github.com/CyTheFox/hexo-blog" target="_blank" rel="noopener" style="color:var(--anzhiyu-fontcolor);text-decoration:none;" onmouseover="this.style.color=\'var(--anzhiyu-main)\'" onmouseout="this.style.color=\'var(--anzhiyu-fontcolor)\'" title="CyTheFox/hexo-blog: server">CyTheFox/hexo-blog</a>',
+    '    <a href="https://github.com/CyTheFox/hexo-blog" target="_blank" rel="noopener" style="color:var(--anzhiyu-fontcolor);text-decoration:none;" onmouseover="this.style.color=\'var(--anzhiyu-main)\'" onmouseout="this.style.color=\'var(--anzhiyu-fontcolor)\'" title="CyTheFox/hexo-blog: server">项目地址</a>',
+    '  </div>',
+    '</div>',
+    '<div class="webinfo-item">',
+    '  <div class="webinfo-item-title">',
+    '    <i class="anzhiyufont anzhiyu-icon-shapes"></i>',
+    '    <div class="item-name">主题 :</div>',
+    '  </div>',
+    '  <div class="item-count">',
+    '    <a href="https://github.com/anzhiyu-c/hexo-theme-anzhiyu" target="_blank" rel="noopener" style="color:var(--anzhiyu-fontcolor);text-decoration:none;" onmouseover="this.style.color=\'var(--anzhiyu-main)\'" onmouseout="this.style.color=\'var(--anzhiyu-fontcolor)\'" title="hexo-theme-anzhiyu">主题</a>',
     '  </div>',
     '</div>'
   ].join('');

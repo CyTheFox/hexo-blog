@@ -47,6 +47,43 @@
     CMS.registerPreviewStyle("/blog/vditor/js/katex/katex.min.css");
     CMS.registerPreviewStyle("/blog/vditor/index.css");
 
+    // 获取当前 Decap CMS 登录会话中的 GitHub Token
+    function getGithubToken() {
+      try {
+        var u = JSON.parse(localStorage.getItem('decap-cms-user') || localStorage.getItem('netlify-cms-user') || '{}');
+        return u.token || null;
+      } catch(e) {
+        return null;
+      }
+    }
+
+    // 生成规范且唯一的图片文件名
+    function formatFileName(originalName) {
+      var ext = '.png';
+      if (originalName && originalName.lastIndexOf('.') !== -1) {
+        ext = originalName.substring(originalName.lastIndexOf('.')).toLowerCase();
+      }
+      var now = new Date();
+      var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+      var dateStr = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+      var rand = Math.random().toString(36).substring(2, 6);
+      return dateStr + '_' + rand + ext;
+    }
+
+    // 将 File 对象读取为 Base64 纯数据字符串
+    function fileToBase64(file) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() {
+          var res = reader.result;
+          var base64 = res.indexOf(',') !== -1 ? res.split(',')[1] : res;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     // 自定义 Vditor 控制组件
     var VditorControl = window.createClass({
       componentDidMount: function() {
@@ -60,7 +97,7 @@
           mode: 'ir', // 即时渲染模式 (Typora-like 所见即所得体验)
           height: 650,
           minHeight: 450,
-          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图等)...',
+          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片)...',
           counter: {
             enable: true
           },
@@ -91,6 +128,7 @@
             'insert-before',
             'insert-after',
             '|',
+            'upload', // 图片上传按钮（支持本地选择）
             'table',
             'edit-mode',
             'fullscreen',
@@ -107,6 +145,78 @@
               ]
             }
           ],
+          upload: {
+            accept: 'image/*,.png,.jpg,.jpeg,.gif,.webp,.svg',
+            multiple: true,
+            max: 15 * 1024 * 1024,
+            handler: async function(files) {
+              if (!files || files.length === 0) return null;
+              if (self.vditor && typeof self.vditor.tip === 'function') {
+                self.vditor.tip('正在上传图片，请稍候...', 0);
+              }
+
+              var token = getGithubToken();
+
+              for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var cleanFileName = formatFileName(file.name || 'image.png');
+                var base64Data = await fileToBase64(file);
+                var isUploaded = false;
+
+                // 1. 同步上传到本地服务器 /api/upload（确保页面即时预览秒出，且服务器备份完整）
+                try {
+                  var localRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: cleanFileName, content: base64Data })
+                  });
+                  if (localRes.ok) {
+                    isUploaded = true;
+                  }
+                } catch(localErr) {
+                  console.warn('Local upload failed, fallback to GitHub:', localErr);
+                }
+
+                // 2. 如果已通过 GitHub 登录获取到 Token，直接调用 GitHub Contents API 提交到仓库 source/img/
+                if (token) {
+                  try {
+                    var ghUrl = 'https://api.github.com/repos/CyTheFox/hexo-blog/contents/source/img/' + cleanFileName;
+                    var ghRes = await fetch(ghUrl, {
+                      method: 'PUT',
+                      headers: {
+                        'Authorization': 'token ' + token,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        message: 'Upload image ' + cleanFileName + ' via CMS Vditor',
+                        content: base64Data,
+                        branch: 'main'
+                      })
+                    });
+                    if (ghRes.ok) {
+                      isUploaded = true;
+                    }
+                  } catch(ghErr) {
+                    console.warn('GitHub API upload failed:', ghErr);
+                  }
+                }
+
+                if (isUploaded) {
+                  var mdImage = '\n![' + (file.name || cleanFileName) + '](/img/' + cleanFileName + ')\n';
+                  self.vditor.insertValue(mdImage);
+                  if (self.vditor && typeof self.vditor.tip === 'function') {
+                    self.vditor.tip('图片上传成功！已插入标准链接', 2000);
+                  }
+                } else {
+                  if (self.vditor && typeof self.vditor.tip === 'function') {
+                    self.vditor.tip('图片上传失败，请检查网络连接', 4000);
+                  }
+                }
+              }
+              return null;
+            }
+          },
           input: function(val) {
             self.isInternalChange = true;
             if (self.props.onChange) {

@@ -6,7 +6,7 @@ backend:
   auth_endpoint: api/auth
 
 media_folder: "source/img"
-public_folder: "/blog/img"
+public_folder: "/img"
 
 locale: "zh_Hans"
 
@@ -21,6 +21,7 @@ collections:
       preview: true
     fields:
       - { label: "标题", name: "title", widget: "string" }
+      - { label: "作者署名", name: "copyright_author", widget: "string", required: false }
       - { label: "发布时间", name: "date", widget: "datetime", format: "YYYY-MM-DD HH:mm:ss", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss" }
       - { label: "封面图URL", name: "cover", widget: "image", required: false }
       - { label: "标签", name: "tags", widget: "list", required: false }

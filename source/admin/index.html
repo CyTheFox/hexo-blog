@@ -19,6 +19,40 @@
     .vditor > .vditor-content { width: 100% !important; }
     .vditor > .vditor-content > .vditor-ir { width: 100% !important; min-width: 0 !important; }
 
+    /* 禁止 Vditor 自带的图片全屏预览弹窗，防止每次点击图片自动放大 */
+    .vditor-preview__dialog {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    /* 浮动防溢出 clearfix */
+    .vditor-ir,
+    .vditor-reset {
+      display: flow-root !important;
+    }
+    .vditor-ir::after,
+    .vditor-reset::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    /* Vditor 预览区默认采用桌面文章卡片视图 (860px 宽度，贴合博客实际观看效果) */
+    .vditor-preview {
+      background-color: #f4f6fa !important;
+    }
+    .vditor-preview > .vditor-reset {
+      max-width: 860px !important;
+      margin: 16px auto !important;
+      background: #ffffff !important;
+      border-radius: 12px !important;
+      padding: 32px 40px !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      line-height: 1.8 !important;
+    }
+
     /* Image click indicator in editor */
     .vditor-ir img {
       cursor: pointer;
@@ -140,7 +174,8 @@
 
         <div style="display: flex; align-items: center; gap: 4px;">
           <span style="font-size: 11px; opacity: 0.6; margin-right: 2px;">尺寸:</span>
-          <button type="button" class="img-bar-btn" data-size="25%" title="宽度 25%">25%</button>
+          <button type="button" class="img-bar-btn" data-size="25%" title="小图 (25%)">25%</button>
+          <button type="button" class="img-bar-btn" data-size="35%" title="环绕推荐 (35%)">35%</button>
           <button type="button" class="img-bar-btn" data-size="50%" title="宽度 50%">50%</button>
           <button type="button" class="img-bar-btn" data-size="75%" title="宽度 75%">75%</button>
           <button type="button" class="img-bar-btn" data-size="100%" title="宽度 100%">100%</button>
@@ -411,11 +446,13 @@
           currentSettings = parseImgSettings(target);
           highlightActiveButtons();
           updateBarPosition();
+          e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
         } else if (!bar.contains(e.target)) {
           hideBar();
         }
-      });
+      }, true);
 
       document.addEventListener('click', function(e) {
         if (!container.contains(e.target) && !bar.contains(e.target)) {
@@ -439,6 +476,18 @@
           value: initialValue,
           mode: 'ir', // 即时渲染模式 (Typora-like 所见即所得体验)
           height: 650,
+          image: {
+            isPreview: false
+          },
+          preview: {
+            mode: 'both',
+            actions: ['desktop', 'tablet', 'mobile'],
+            markdown: {
+              sanitize: false,
+              toc: true,
+              mark: true
+            }
+          },
           minHeight: 450,
           placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片，点击图片可呼出悬浮排版条)...',
           counter: {
@@ -633,7 +682,11 @@
         Vditor.preview(this.container, this.props.value || '', {
           cdn: '/blog/vditor',
           mode: 'light',
+          image: {
+            isPreview: false
+          },
           markdown: {
+            sanitize: false,
             toc: true,
             mark: true,
             footnotes: true
@@ -644,15 +697,51 @@
         var self = this;
         return window.h('div', {
           style: {
-            padding: '20px',
-            backgroundColor: '#ffffff'
+            padding: '24px 16px',
+            backgroundColor: '#f4f6fa',
+            minHeight: '100vh',
+            boxSizing: 'border-box'
+          }
+        },
+        window.h('div', {
+          id: 'article-container',
+          className: 'post-content vditor-desktop-article',
+          style: {
+            maxWidth: '860px',
+            margin: '0 auto',
+            padding: '36px 42px',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
+            display: 'flow-root',
+            lineHeight: '1.8',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif'
           },
           ref: function(el) {
             self.container = el;
           }
-        });
+        }));
       }
     });
+
+    // 监听 Decap CMS 保存操作，及时通知服务器拉取并编译
+    (function setupAutoSync() {
+      var syncTimer = null;
+      function triggerSync() {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(function() {
+          fetch('/api/sync', { method: 'POST' }).catch(function() {});
+        }, 1500);
+      }
+      var rawFetch = window.fetch;
+      window.fetch = function() {
+        var url = arguments[0];
+        if (typeof url === 'string' && url.indexOf('api.github.com') !== -1 && url.indexOf('contents/source/_posts') !== -1) {
+          triggerSync();
+        }
+        return rawFetch.apply(this, arguments);
+      };
+    })();
 
     // 注册 Widget 到 Decap CMS
     CMS.registerWidget('vditor', VditorControl, VditorPreview);

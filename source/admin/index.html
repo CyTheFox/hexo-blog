@@ -6,33 +6,18 @@
   <title>博客管理后台 - Decap CMS</title>
   
   <!-- Vditor CSS -->
-  <link rel="stylesheet" href="https://cdn.cbd.int/vditor@3.9.9/dist/index.css" />
+  <link rel="stylesheet" href="/blog/vditor/dist/index.css" />
   <!-- KaTeX CSS -->
-  <link rel="stylesheet" href="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css" />
+  <link rel="stylesheet" href="/blog/vditor/dist/js/katex/katex.min.css" />
 
   <style>
-    /* Vditor Decap CMS integration styles */
-    .vditor {
-      border-radius: 8px !important;
-      border: 1px solid #dfe1e5 !important;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
-    .vditor-toolbar {
-      background-color: #f8fafc !important;
-      border-top-left-radius: 8px !important;
-      border-top-right-radius: 8px !important;
-      border-bottom: 1px solid #e2e8f0 !important;
-      padding: 4px 8px !important;
-    }
-    .vditor--fullscreen {
-      z-index: 99999 !important;
-      border-radius: 0 !important;
-    }
-    .vditor-reset {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-      font-size: 16px !important;
-      line-height: 1.75 !important;
-    }
+    /* minimal: only style the Vditor surface if it is ever mounted */
+    .vditor { border-radius: 8px; }
+
+    /* dsh:v2 layout guards (survive Decap class leakage onto .vditor) */
+    .vditor { display: flex !important; flex-direction: column !important; }
+    .vditor > .vditor-content { width: 100% !important; }
+    .vditor > .vditor-content > .vditor-ir { width: 100% !important; min-width: 0 !important; }
   </style>
 </head>
 <body>
@@ -49,19 +34,18 @@
   </script>
 
   <!-- Vditor Core JS -->
-  <script src="https://cdn.cbd.int/vditor@3.9.9/dist/index.min.js"></script>
+  <script src="/blog/vditor/dist/index.min.js"></script>
 
   <!-- KaTeX Core & Auto-render -->
   <script src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
   <!-- Decap CMS -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 
   <script>
     // 注册 KaTeX 样式表到 Decap CMS 预览区
-    CMS.registerPreviewStyle("https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css");
-    CMS.registerPreviewStyle("https://cdn.cbd.int/vditor@3.9.9/dist/index.css");
+    CMS.registerPreviewStyle("/blog/vditor/js/katex/katex.min.css");
+    CMS.registerPreviewStyle("/blog/vditor/index.css");
 
     // 自定义 Vditor 控制组件
     var VditorControl = window.createClass({
@@ -71,7 +55,7 @@
         this.isInternalChange = false;
 
         this.vditor = new Vditor(this.container, {
-          cdn: 'https://cdn.cbd.int/vditor@3.9.9',
+          cdn: '/blog/vditor',
           value: initialValue,
           mode: 'ir', // 即时渲染模式 (Typora-like 所见即所得体验)
           height: 650,
@@ -160,17 +144,20 @@
 
       render: function() {
         var self = this;
-        return window.h('div', {
-          className: this.props.classNameWrapper || '',
-          style: {
-            width: '100%',
-            minHeight: '650px',
-            marginBottom: '16px'
-          },
-          ref: function(el) {
-            self.container = el;
-          }
-        });
+        return window.h('div',
+          { className: this.props.classNameWrapper || '' },
+          window.h('div', {
+            style: {
+              width: '100%',
+              height: '650px',
+              position: 'relative',
+              marginBottom: '16px'
+            },
+            ref: function(el) {
+              self.container = el;
+            }
+          })
+        );
       }
     });
 
@@ -185,7 +172,7 @@
       renderPreview: function() {
         if (!this.container || !window.Vditor) return;
         Vditor.preview(this.container, this.props.value || '', {
-          cdn: 'https://cdn.cbd.int/vditor@3.9.9',
+          cdn: '/blog/vditor',
           mode: 'light',
           markdown: {
             toc: true,
@@ -210,7 +197,6 @@
 
     // 注册 Widget 到 Decap CMS
     CMS.registerWidget('vditor', VditorControl, VditorPreview);
-    CMS.registerWidget('markdown', VditorControl, VditorPreview);
 
     // 监听右侧实时预览 iframe，处理额外公式渲染
     (function watchPreview() {
@@ -239,7 +225,7 @@
               if (!doc.querySelector('link[href*="katex"]')) {
                 var link = doc.createElement("link");
                 link.rel = "stylesheet";
-                link.href = "https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css";
+                link.href = "/blog/vditor/js/katex/katex.min.css";
                 doc.head.appendChild(link);
               }
               var timer = null;
@@ -261,6 +247,51 @@
       });
       observer.observe(document.body, { childList: true, subtree: true });
     })();
+  </script>
+
+  <!-- DSH_LAYOUT_DEBUG: only active with ?debug=1 -->
+  <script>
+    if (location.search.indexOf('debug=1') !== -1) {
+      var dumpTimer = setInterval(function () {
+        var v = document.querySelector('.vditor');
+        if (!v) return;
+        clearInterval(dumpTimer);
+        function box(el) {
+          if (!el) return null;
+          var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+          return {
+            cls: (el.className || el.tagName).toString().slice(0, 34),
+            x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height),
+            display: cs.display, flex: cs.flex, padL: cs.paddingLeft
+          };
+        }
+        function chain(el, n) {
+          var out = [];
+          for (var i = 0; i < n && el; i++) { out.push(box(el)); el = el.parentElement; }
+          return out;
+        }
+        var lines = [];
+        lines.push('viewport=' + window.innerWidth + 'x' + window.innerHeight);
+        lines.push('--- .vditor children ---');
+        ['.vditor-toolbar', '.vditor-content', '.vditor-ir', '.vditor-preview', '.vditor-reset', '.vditor-counter']
+          .forEach(function (sel) {
+            var b = box(document.querySelector(sel));
+            lines.push(sel + ' ' + (b ? JSON.stringify(b) : 'MISSING'));
+          });
+        lines.push('--- parent chain ---');
+        chain(v, 5).forEach(function (b, i) { lines.push(i + ': ' + JSON.stringify(b)); });
+        lines.push('--- vditor classes ---');
+        lines.push(v.className);
+        var pre = document.getElementById('dsh-layout-debug');
+        if (!pre) {
+          pre = document.createElement('pre');
+          pre.id = 'dsh-layout-debug';
+          pre.style.cssText = 'position:fixed;left:8px;top:8px;z-index:2147483647;background:#fff;border:2px solid #f00;padding:8px;font:11px/1.4 monospace;max-width:620px;white-space:pre-wrap;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+          document.body.appendChild(pre);
+        }
+        pre.textContent = lines.join('\n');
+      }, 800);
+    }
   </script>
 </body>
 </html>

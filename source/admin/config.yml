@@ -18,7 +18,7 @@ collections:
     create: true
     slug: "{{slug}}"
     editor:
-      preview: true
+      preview: false
     fields:
       - { label: "标题", name: "title", widget: "string" }
       - { label: "作者署名", name: "copyright_author", widget: "string", required: false }

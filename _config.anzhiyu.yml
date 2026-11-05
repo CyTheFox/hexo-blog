@@ -1062,8 +1062,8 @@ home_top:
       shadow: var(--anzhiyu-shadow-blue)
       class: blue
       icon: anzhiyu-icon-dove
-    - name: 大学
-      path: /categories/大学生涯/
+    - name: 技术
+      path: /categories/tech/
       shadow: var(--anzhiyu-shadow-red)
       class: red
       icon: anzhiyu-icon-fire

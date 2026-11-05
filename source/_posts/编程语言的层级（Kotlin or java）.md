@@ -3,7 +3,10 @@ title: 编程语言的层级（Kotlin or Java）
 copyright_author: HIOPLE
 date: 2026-11-05 10:59:00
 cover: /img/ktandjava.png
-tags: []
+tags:
+  - 技术
+categories:
+  - tech
 ---
 这里的层级是类似谓词逻辑意义上的，用谓词逻辑的术语代指。
 

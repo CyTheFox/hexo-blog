@@ -4,8 +4,36 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>博客管理后台 - Decap CMS</title>
+  
+  <!-- Vditor CSS -->
+  <link rel="stylesheet" href="https://cdn.cbd.int/vditor@3.9.9/dist/index.css" />
   <!-- KaTeX CSS -->
   <link rel="stylesheet" href="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css" />
+
+  <style>
+    /* Vditor Decap CMS integration styles */
+    .vditor {
+      border-radius: 8px !important;
+      border: 1px solid #dfe1e5 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .vditor-toolbar {
+      background-color: #f8fafc !important;
+      border-top-left-radius: 8px !important;
+      border-top-right-radius: 8px !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 4px 8px !important;
+    }
+    .vditor--fullscreen {
+      z-index: 99999 !important;
+      border-radius: 0 !important;
+    }
+    .vditor-reset {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      font-size: 16px !important;
+      line-height: 1.75 !important;
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -20,7 +48,10 @@
     }
   </script>
 
-  <!-- KaTeX core & auto-render -->
+  <!-- Vditor Core JS -->
+  <script src="https://cdn.cbd.int/vditor@3.9.9/dist/index.min.js"></script>
+
+  <!-- KaTeX Core & Auto-render -->
   <script src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
   <script src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
@@ -28,71 +59,160 @@
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 
   <script>
-    // 1. 注册 KaTeX 样式表到 Decap CMS 预览区
+    // 注册 KaTeX 样式表到 Decap CMS 预览区
     CMS.registerPreviewStyle("https://cdn.cbd.int/katex@0.16.9/dist/katex.min.css");
+    CMS.registerPreviewStyle("https://cdn.cbd.int/vditor@3.9.9/dist/index.css");
 
-    // 2. 注册可视化编辑器组件：数学公式 (KaTeX)
-    CMS.registerEditorComponent({
-      id: "katex",
-      label: "数学公式 (KaTeX)",
-      fields: [
-        { name: "formula", label: "LaTeX 公式代码", widget: "text" },
-        { name: "block", label: "独占一行 (Block)", widget: "boolean", default: true }
-      ],
-      pattern: /(?:^\$\$\s*([\s\S]*?)\s*\$\$|\$([^\$\n]+)\$)/m,
-      fromBlock: function(match) {
-        return {
-          formula: match[1] || match[2] || "",
-          block: Boolean(match[1])
-        };
+    // 自定义 Vditor 控制组件
+    var VditorControl = window.createClass({
+      componentDidMount: function() {
+        var self = this;
+        var initialValue = this.props.value || '';
+        this.isInternalChange = false;
+
+        this.vditor = new Vditor(this.container, {
+          cdn: 'https://cdn.cbd.int/vditor@3.9.9',
+          value: initialValue,
+          mode: 'ir', // 即时渲染模式 (Typora-like 所见即所得体验)
+          height: 650,
+          minHeight: 450,
+          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图等)...',
+          counter: {
+            enable: true
+          },
+          cache: {
+            enable: false // 由 Decap CMS 全权管理文章状态与版本，避免本地缓存冲突
+          },
+          toolbarConfig: {
+            pin: true
+          },
+          toolbar: [
+            'emoji',
+            'headings',
+            'bold',
+            'italic',
+            'strike',
+            'link',
+            '|',
+            'list',
+            'ordered-list',
+            'check',
+            'outdent',
+            'indent',
+            '|',
+            'quote',
+            'line',
+            'code',
+            'inline-code',
+            'insert-before',
+            'insert-after',
+            '|',
+            'table',
+            'edit-mode',
+            'fullscreen',
+            {
+              name: 'more',
+              toolbar: [
+                'both',
+                'code-theme',
+                'content-theme',
+                'export',
+                'outline',
+                'preview',
+                'devtools'
+              ]
+            }
+          ],
+          input: function(val) {
+            self.isInternalChange = true;
+            if (self.props.onChange) {
+              self.props.onChange(val);
+            }
+          },
+          after: function() {
+            self.isLoaded = true;
+          }
+        });
       },
-      toBlock: function(obj) {
-        if (obj.block) {
-          return "$$\n" + (obj.formula || "").trim() + "\n$$";
+
+      componentDidUpdate: function(prevProps) {
+        if (this.vditor && this.isLoaded && this.props.value !== prevProps.value) {
+          if (this.isInternalChange) {
+            this.isInternalChange = false;
+          } else {
+            // 外部更新数据（如异步加载文章或重置时）
+            var currentVal = this.vditor.getValue();
+            if (this.props.value !== currentVal) {
+              this.vditor.setValue(this.props.value || '');
+            }
+          }
         }
-        return "$" + (obj.formula || "").trim() + "$";
       },
-      toPreview: function(obj) {
-        try {
-          return window.katex.renderToString(obj.formula || "", {
-            displayMode: obj.block,
-            throwOnError: false
-          });
-        } catch (e) {
-          return '<span style="color:red">KaTeX Error: ' + e.message + '</span>';
+
+      componentWillUnmount: function() {
+        if (this.vditor) {
+          try {
+            this.vditor.destroy();
+          } catch(e) {}
+          this.vditor = null;
         }
+      },
+
+      render: function() {
+        var self = this;
+        return window.h('div', {
+          className: this.props.classNameWrapper || '',
+          style: {
+            width: '100%',
+            minHeight: '650px',
+            marginBottom: '16px'
+          },
+          ref: function(el) {
+            self.container = el;
+          }
+        });
       }
     });
 
-    // 3. 注册可视化编辑器组件：正文音乐卡片 (Meting)
-    CMS.registerEditorComponent({
-      id: "meting_music",
-      label: "音乐播放卡片 (Meting)",
-      fields: [
-        { name: "id", label: "歌曲或歌单ID / 链接", widget: "string", hint: "例如 186016 或 https://music.163.com/song?id=186016" },
-        { name: "server", label: "音乐平台", widget: "select", options: ["netease", "tencent", "kugou"], default: "netease" },
-        { name: "type", label: "类型", widget: "select", options: ["song", "playlist"], default: "song" }
-      ],
-      pattern: /^<meting-js\s+id="([^"]+)"\s+server="([^"]+)"\s+type="([^"]+)"[^>]*><\/meting-js>$/m,
-      fromBlock: function(match) {
-        return {
-          id: match[1],
-          server: match[2],
-          type: match[3]
-        };
+    // 自定义 Vditor 预览组件（右侧预览区）
+    var VditorPreview = window.createClass({
+      componentDidMount: function() {
+        this.renderPreview();
       },
-      toBlock: function(obj) {
-        var songId = obj.id || "";
-        var m = songId.match(/id=(\d+)/);
-        if (m) songId = m[1];
-        return '<meting-js id="' + songId + '" server="' + (obj.server || 'netease') + '" type="' + (obj.type || 'song') + '" mutex="true" preload="none" theme="var(--anzhiyu-main)"></meting-js>';
+      componentDidUpdate: function() {
+        this.renderPreview();
       },
-      toPreview: function(obj) {
-        return '<div style="padding:10px 14px;background:#f6f8fa;border:1px solid #49b1f5;border-radius:8px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">🎵</span><span><strong>音乐卡片:</strong> [' + (obj.server || 'netease') + '] ' + (obj.type === 'playlist' ? '歌单' : '单曲') + ' (ID: ' + (obj.id || '') + ')</span></div>';
+      renderPreview: function() {
+        if (!this.container || !window.Vditor) return;
+        Vditor.preview(this.container, this.props.value || '', {
+          cdn: 'https://cdn.cbd.int/vditor@3.9.9',
+          mode: 'light',
+          markdown: {
+            toc: true,
+            mark: true,
+            footnotes: true
+          }
+        });
+      },
+      render: function() {
+        var self = this;
+        return window.h('div', {
+          style: {
+            padding: '20px',
+            backgroundColor: '#ffffff'
+          },
+          ref: function(el) {
+            self.container = el;
+          }
+        });
       }
     });
 
-    // 4. 监听右侧实时预览 iframe，当输入 $...$ 或 $$...$$ 时实时渲染 KaTeX
+    // 注册 Widget 到 Decap CMS
+    CMS.registerWidget('vditor', VditorControl, VditorPreview);
+    CMS.registerWidget('markdown', VditorControl, VditorPreview);
+
+    // 监听右侧实时预览 iframe，处理额外公式渲染
     (function watchPreview() {
       function renderMathInDoc(doc) {
         if (!doc || !doc.body || !window.renderMathInElement) return;

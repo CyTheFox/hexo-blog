@@ -2,6 +2,8 @@ backend:
   name: github
   repo: CyTheFox/hexo-blog
   branch: main
+  base_url: http://59.110.213.166
+  auth_endpoint: api/auth
 
 media_folder: "source/img"
 public_folder: "/blog/img"

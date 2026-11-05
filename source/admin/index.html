@@ -18,6 +18,15 @@
     .vditor { display: flex !important; flex-direction: column !important; }
     .vditor > .vditor-content { width: 100% !important; }
     .vditor > .vditor-content > .vditor-ir { width: 100% !important; min-width: 0 !important; }
+
+    /* Image click indicator in editor */
+    .vditor-ir img {
+      cursor: pointer;
+      transition: outline 0.15s ease;
+    }
+    .vditor-ir img:hover {
+      outline: 2px solid #0969da;
+    }
   </style>
 </head>
 <body>
@@ -84,6 +93,340 @@
       });
     }
 
+    // 初始化图片悬浮操作条（对齐、文字包围、缩放尺寸）
+    function initImageFloatingBar(vditor, container, onContentChange) {
+      var bar = document.getElementById('vditor-img-floating-bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'vditor-img-floating-bar';
+        document.body.appendChild(bar);
+      }
+
+      bar.style.cssText = [
+        'position: absolute',
+        'display: none',
+        'z-index: 999999',
+        'background: #1e2227',
+        'color: #e6edf3',
+        'padding: 6px 10px',
+        'border-radius: 8px',
+        'box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+        'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        'font-size: 12px',
+        'user-select: none',
+        'align-items: center',
+        'gap: 8px',
+        'white-space: nowrap',
+        'transition: opacity 0.12s ease'
+      ].join(';');
+
+      var currentTargetImg = null;
+      var currentSettings = {
+        align: 'default',
+        width: '100%',
+        rounded: true
+      };
+
+      bar.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 11px; opacity: 0.6; margin-right: 2px;">对齐:</span>
+          <button type="button" class="img-bar-btn" data-align="left" title="居左文字环绕">⬅ 左环绕</button>
+          <button type="button" class="img-bar-btn" data-align="center" title="居中对齐">⏹ 居中</button>
+          <button type="button" class="img-bar-btn" data-align="right" title="居右文字环绕">右环绕 ➡</button>
+          <button type="button" class="img-bar-btn" data-align="default" title="恢复默认独占行">默认</button>
+        </div>
+
+        <div style="width: 1px; height: 16px; background: rgba(255, 255, 255, 0.15);"></div>
+
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 11px; opacity: 0.6; margin-right: 2px;">尺寸:</span>
+          <button type="button" class="img-bar-btn" data-size="25%" title="宽度 25%">25%</button>
+          <button type="button" class="img-bar-btn" data-size="50%" title="宽度 50%">50%</button>
+          <button type="button" class="img-bar-btn" data-size="75%" title="宽度 75%">75%</button>
+          <button type="button" class="img-bar-btn" data-size="100%" title="宽度 100%">100%</button>
+          <input type="range" id="img-bar-range" min="15" max="100" step="5" value="100" style="width: 55px; height: 4px; accent-color: #0969da; cursor: pointer; margin-left: 4px;" title="滑动微调尺寸" />
+          <span id="img-bar-range-val" style="font-size: 11px; min-width: 32px; text-align: right; color: #58a6ff;">100%</span>
+        </div>
+
+        <div style="width: 1px; height: 16px; background: rgba(255, 255, 255, 0.15);"></div>
+
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button type="button" class="img-bar-btn" data-action="toggle-rounded" title="切换圆角美化">圆角</button>
+          <button type="button" class="img-bar-btn" data-action="delete" style="color: #ff7b72;" title="删除图片">🗑</button>
+          <button type="button" class="img-bar-btn" data-action="close" style="opacity: 0.5;" title="关闭">✕</button>
+        </div>
+      `;
+
+      if (!document.getElementById('vditor-img-bar-style')) {
+        var styleEl = document.createElement('style');
+        styleEl.id = 'vditor-img-bar-style';
+        styleEl.textContent = `
+          .img-bar-btn {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e6edf3;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            line-height: 1.2;
+          }
+          .img-bar-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.25);
+          }
+          .img-bar-btn.active {
+            background: #0969da !important;
+            color: #ffffff !important;
+            border-color: #1f6feb !important;
+            font-weight: 600;
+          }
+        `;
+        document.head.appendChild(styleEl);
+      }
+
+      var rangeInput = bar.querySelector('#img-bar-range');
+      var rangeVal = bar.querySelector('#img-bar-range-val');
+
+      function updateBarPosition() {
+        if (!currentTargetImg || !currentTargetImg.isConnected) {
+          hideBar();
+          return;
+        }
+        var rect = currentTargetImg.getBoundingClientRect();
+        var barW = bar.offsetWidth || 440;
+        var barH = bar.offsetHeight || 38;
+
+        var left = rect.left + (rect.width / 2) - (barW / 2);
+        var top = rect.top - barH - 10;
+
+        if (left < 10) left = 10;
+        if (left + barW > window.innerWidth - 10) left = window.innerWidth - barW - 10;
+        if (top < 10) top = rect.bottom + 10;
+
+        bar.style.left = (left + window.scrollX) + 'px';
+        bar.style.top = (top + window.scrollY) + 'px';
+        bar.style.display = 'flex';
+      }
+
+      function hideBar() {
+        bar.style.display = 'none';
+        currentTargetImg = null;
+      }
+
+      function parseImgSettings(img) {
+        var rawSrc = img.getAttribute('src') || '';
+        var parent = img.parentElement;
+        var style = img.getAttribute('style') || '';
+        var widthAttr = img.getAttribute('width') || '';
+
+        var align = 'default';
+        if (style.indexOf('float: left') !== -1 || style.indexOf('float:left') !== -1) {
+          align = 'left';
+        } else if (style.indexOf('float: right') !== -1 || style.indexOf('float:right') !== -1) {
+          align = 'right';
+        } else if (parent && (parent.getAttribute('align') === 'center' || parent.style.textAlign === 'center' || style.indexOf('margin: 0 auto') !== -1)) {
+          align = 'center';
+        }
+
+        var width = '100%';
+        var wMatch = style.match(/width:\s*([^;]+)/i);
+        if (wMatch) {
+          width = wMatch[1].trim();
+        } else if (widthAttr) {
+          width = widthAttr.endsWith('%') || widthAttr.endsWith('px') ? widthAttr : (widthAttr + 'px');
+        }
+
+        var rounded = style.indexOf('border-radius') !== -1 || img.style.borderRadius !== '';
+
+        return {
+          src: rawSrc,
+          alt: img.getAttribute('alt') || '',
+          align: align,
+          width: width,
+          rounded: rounded
+        };
+      }
+
+      function highlightActiveButtons() {
+        bar.querySelectorAll('.img-bar-btn[data-align]').forEach(function(btn) {
+          if (btn.getAttribute('data-align') === currentSettings.align) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        bar.querySelectorAll('.img-bar-btn[data-size]').forEach(function(btn) {
+          if (btn.getAttribute('data-size') === currentSettings.width) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        var rBtn = bar.querySelector('.img-bar-btn[data-action="toggle-rounded"]');
+        if (rBtn) {
+          if (currentSettings.rounded) {
+            rBtn.classList.add('active');
+          } else {
+            rBtn.classList.remove('active');
+          }
+        }
+
+        var num = parseInt(currentSettings.width) || 100;
+        rangeInput.value = num;
+        rangeVal.textContent = currentSettings.width;
+      }
+
+      function applyImgUpdate(newSettings) {
+        if (!currentTargetImg) return;
+        var info = parseImgSettings(currentTargetImg);
+        var src = info.src;
+        var alt = info.alt;
+
+        var align = newSettings.align !== undefined ? newSettings.align : currentSettings.align;
+        var width = newSettings.width !== undefined ? newSettings.width : currentSettings.width;
+        var rounded = newSettings.rounded !== undefined ? newSettings.rounded : currentSettings.rounded;
+
+        currentSettings = { align: align, width: width, rounded: rounded };
+
+        var radiusCss = rounded ? ' border-radius: 8px;' : '';
+        var replacement = '';
+
+        if (align === 'center') {
+          replacement = '<div align="center"><img src="' + src + '" alt="' + alt + '" style="width: ' + width + ';' + radiusCss + '" /></div>';
+        } else if (align === 'left') {
+          replacement = '<img src="' + src + '" alt="' + alt + '" style="float: left; margin: 0 16px 12px 0; width: ' + width + ';' + radiusCss + '" />';
+        } else if (align === 'right') {
+          replacement = '<img src="' + src + '" alt="' + alt + '" style="float: right; margin: 0 0 12px 16px; width: ' + width + ';' + radiusCss + '" />';
+        } else {
+          if (width === '100%' && !rounded) {
+            replacement = '![' + alt + '](' + src + ')';
+          } else {
+            replacement = '<img src="' + src + '" alt="' + alt + '" style="width: ' + width + ';' + radiusCss + '" />';
+          }
+        }
+
+        var md = vditor.getValue();
+        var escapedSrc = src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        var regex = new RegExp(
+          '(<div[^>]*align=["\']?center["\']?[^>]*>\\s*<img[^>]*src=["\']?' + escapedSrc + '["\']?[^>]*>\\s*<\\/div>)|' +
+          '(<img[^>]*src=["\']?' + escapedSrc + '["\']?[^>]*>)|' +
+          '(!\\[[^\\]]*\\]\\(' + escapedSrc + '(?:\\s+["\'][^"\']*["\'])?\\))',
+          'i'
+        );
+
+        var match = md.match(regex);
+        if (match) {
+          var newMd = md.substring(0, match.index) + replacement + md.substring(match.index + match[0].length);
+          vditor.setValue(newMd);
+          onContentChange(newMd);
+          if (typeof vditor.tip === 'function') {
+            vditor.tip('已更新图片布局', 1000);
+          }
+        }
+
+        highlightActiveButtons();
+
+        setTimeout(function() {
+          var imgs = container.querySelectorAll('img');
+          for (var j = 0; j < imgs.length; j++) {
+            if (imgs[j].getAttribute('src') === src) {
+              currentTargetImg = imgs[j];
+              updateBarPosition();
+              break;
+            }
+          }
+        }, 150);
+      }
+
+      // 绑定按钮点击事件
+      bar.addEventListener('click', function(e) {
+        var btn = e.target.closest('.img-bar-btn');
+        if (!btn) return;
+        e.stopPropagation();
+
+        var align = btn.getAttribute('data-align');
+        if (align) {
+          applyImgUpdate({ align: align });
+          return;
+        }
+
+        var size = btn.getAttribute('data-size');
+        if (size) {
+          applyImgUpdate({ width: size });
+          return;
+        }
+
+        var action = btn.getAttribute('data-action');
+        if (action === 'toggle-rounded') {
+          applyImgUpdate({ rounded: !currentSettings.rounded });
+        } else if (action === 'delete') {
+          if (!currentTargetImg) return;
+          var info = parseImgSettings(currentTargetImg);
+          var src = info.src;
+          var md = vditor.getValue();
+          var escapedSrc = src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          var regex = new RegExp(
+            '(<div[^>]*align=["\']?center["\']?[^>]*>\\s*<img[^>]*src=["\']?' + escapedSrc + '["\']?[^>]*>\\s*<\\/div>)|' +
+            '(<img[^>]*src=["\']?' + escapedSrc + '["\']?[^>]*>)|' +
+            '(!\\[[^\\]]*\\]\\(' + escapedSrc + '(?:\\s+["\'][^"\']*["\'])?\\))',
+            'i'
+          );
+          var match = md.match(regex);
+          if (match) {
+            var newMd = md.substring(0, match.index) + md.substring(match.index + match[0].length);
+            vditor.setValue(newMd);
+            onContentChange(newMd);
+            hideBar();
+            if (typeof vditor.tip === 'function') {
+              vditor.tip('图片已删除', 1200);
+            }
+          }
+        } else if (action === 'close') {
+          hideBar();
+        }
+      });
+
+      rangeInput.addEventListener('input', function() {
+        var val = rangeInput.value + '%';
+        rangeVal.textContent = val;
+        if (currentTargetImg) {
+          currentTargetImg.style.width = val;
+        }
+      });
+
+      rangeInput.addEventListener('change', function() {
+        var val = rangeInput.value + '%';
+        applyImgUpdate({ width: val });
+      });
+
+      container.addEventListener('click', function(e) {
+        var target = e.target;
+        if (target && target.tagName === 'IMG') {
+          currentTargetImg = target;
+          currentSettings = parseImgSettings(target);
+          highlightActiveButtons();
+          updateBarPosition();
+          e.stopPropagation();
+        } else if (!bar.contains(e.target)) {
+          hideBar();
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!container.contains(e.target) && !bar.contains(e.target)) {
+          hideBar();
+        }
+      });
+
+      window.addEventListener('resize', updateBarPosition);
+      window.addEventListener('scroll', updateBarPosition, true);
+    }
+
     // 自定义 Vditor 控制组件
     var VditorControl = window.createClass({
       componentDidMount: function() {
@@ -97,7 +440,7 @@
           mode: 'ir', // 即时渲染模式 (Typora-like 所见即所得体验)
           height: 650,
           minHeight: 450,
-          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片)...',
+          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片，点击图片可呼出悬浮排版条)...',
           counter: {
             enable: true
           },
@@ -225,6 +568,12 @@
           },
           after: function() {
             self.isLoaded = true;
+            initImageFloatingBar(self.vditor, self.container, function(newVal) {
+              self.isInternalChange = true;
+              if (self.props.onChange) {
+                self.props.onChange(newVal);
+              }
+            });
           }
         });
       },

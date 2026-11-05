@@ -38,17 +38,28 @@
       clear: both;
     }
 
-    /* Vditor 预览区默认采用桌面文章卡片视图 (860px 宽度，贴合博客实际观看效果) */
+    /* 彻底杜绝 Vditor 双栏分屏，保证 100% 单栏编辑体验 */
     .vditor-preview {
-      background-color: #f4f6fa !important;
+      display: none !important;
+      width: 0 !important;
+      max-width: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
-    .vditor-preview > .vditor-reset {
+    .vditor-ir {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 1 1 100% !important;
+      border-right: none !important;
+    }
+    .vditor-ir > .vditor-reset {
       max-width: 860px !important;
-      margin: 16px auto !important;
-      background: #ffffff !important;
-      border-radius: 12px !important;
-      padding: 32px 40px !important;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+      margin: 0 auto !important;
+      padding: 24px 32px !important;
+      box-sizing: border-box !important;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
       line-height: 1.8 !important;
     }
@@ -479,15 +490,6 @@
           image: {
             isPreview: false
           },
-          preview: {
-            mode: 'editor',
-            actions: ['desktop', 'tablet', 'mobile'],
-            markdown: {
-              sanitize: false,
-              toc: true,
-              mark: true
-            }
-          },
           minHeight: 450,
           placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片，点击图片可呼出悬浮排版条)...',
           counter: {
@@ -527,8 +529,7 @@
             {
               name: 'more',
               toolbar: [
-                'both',
-                'code-theme',
+                                'code-theme',
                 'content-theme',
                 'export',
                 'outline',
@@ -725,6 +726,15 @@
     });
 
     // 监听 Decap CMS 保存操作，及时通知服务器拉取并编译
+        // 清理可能缓存的 Vditor 双栏或分屏状态
+    try {
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.toLowerCase().indexOf('vditor') !== -1) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch(e) {}
+
     (function setupAutoSync() {
       var syncTimer = null;
       function triggerSync() {

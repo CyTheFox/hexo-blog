@@ -1,5 +1,5 @@
 ---
-title: 编程语言的层级（Kotlin or java）
+title: 编程语言的层级（Kotlin or Java）
 copyright_author: HIOPLE
 date: 2026-11-05 10:59:00
 cover: /img/ktandjava.png

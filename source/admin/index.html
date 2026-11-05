@@ -64,7 +64,35 @@
       }
     });
 
-    // 3. 监听右侧实时预览 iframe，当输入 $...$ 或 $$...$$ 时实时渲染
+    // 3. 注册可视化编辑器组件：正文音乐卡片 (Meting)
+    CMS.registerEditorComponent({
+      id: "meting_music",
+      label: "音乐播放卡片 (Meting)",
+      fields: [
+        { name: "id", label: "歌曲或歌单ID / 链接", widget: "string", hint: "例如 186016 或 https://music.163.com/song?id=186016" },
+        { name: "server", label: "音乐平台", widget: "select", options: ["netease", "tencent", "kugou"], default: "netease" },
+        { name: "type", label: "类型", widget: "select", options: ["song", "playlist"], default: "song" }
+      ],
+      pattern: /^<meting-js\s+id="([^"]+)"\s+server="([^"]+)"\s+type="([^"]+)"[^>]*><\/meting-js>$/m,
+      fromBlock: function(match) {
+        return {
+          id: match[1],
+          server: match[2],
+          type: match[3]
+        };
+      },
+      toBlock: function(obj) {
+        var songId = obj.id || "";
+        var m = songId.match(/id=(\d+)/);
+        if (m) songId = m[1];
+        return '<meting-js id="' + songId + '" server="' + (obj.server || 'netease') + '" type="' + (obj.type || 'song') + '" mutex="true" preload="none" theme="var(--anzhiyu-main)"></meting-js>';
+      },
+      toPreview: function(obj) {
+        return '<div style="padding:10px 14px;background:#f6f8fa;border:1px solid #49b1f5;border-radius:8px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">🎵</span><span><strong>音乐卡片:</strong> [' + (obj.server || 'netease') + '] ' + (obj.type === 'playlist' ? '歌单' : '单曲') + ' (ID: ' + (obj.id || '') + ')</span></div>';
+      }
+    });
+
+    // 4. 监听右侧实时预览 iframe，当输入 $...$ 或 $$...$$ 时实时渲染 KaTeX
     (function watchPreview() {
       function renderMathInDoc(doc) {
         if (!doc || !doc.body || !window.renderMathInElement) return;

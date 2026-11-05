@@ -24,6 +24,7 @@ collections:
       - { label: "作者署名", name: "copyright_author", widget: "string", required: false }
       - { label: "发布时间", name: "date", widget: "datetime", format: "YYYY-MM-DD HH:mm:ss", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss" }
       - { label: "封面图URL", name: "cover", widget: "image", required: false }
+      - { label: "专属背景音乐链接/ID", name: "music", widget: "string", required: false, hint: "支持网易云单曲链接(如 https://music.163.com/song?id=186016)、单曲ID(如 186016)或MP3直链。进入文章时自动切换并播放。" }
       - { label: "标签", name: "tags", widget: "list", required: false }
       - { label: "分类", name: "categories", widget: "list", required: false }
       - { label: "正文内容", name: "body", widget: "markdown" }

@@ -526,6 +526,8 @@ footer:
       enable: false
       link: /copyright
     linkList:
+      - link: https://moment-new.github.io/
+        text: 陈某人的应许之地
       - link: https://github.com/anzhiyu-c/hexo-theme-anzhiyu
         text: 主题
       # - link: https://image.anheyu.com

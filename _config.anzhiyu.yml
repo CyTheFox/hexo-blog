@@ -1058,10 +1058,10 @@ home_top:
   siteText: anheyu.com
   category:
     - name: 表情
-      path: /categories/emotion/
+      path: /album/
       shadow: var(--anzhiyu-shadow-blue)
       class: blue
-      icon: anzhiyu-icon-dove
+      icon: anzhiyu-icon-images
     - name: 技术
       path: /categories/tech/
       shadow: var(--anzhiyu-shadow-red)

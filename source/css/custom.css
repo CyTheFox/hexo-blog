@@ -217,3 +217,15 @@
 body:has(#console.show) #nav-music {
   display: flex !important;
 }
+
+/* restore the full console layout on short viewports
+   (theme hides the card group + music control under 800px height) */
+@media screen and (max-height: 800px) {
+  #console .console-card-group {
+    display: flex !important;
+  }
+  #console #consoleMusic,
+  #console #consoleCommentBarrage {
+    display: flex !important;
+  }
+}

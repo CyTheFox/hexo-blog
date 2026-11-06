@@ -1,23 +1,29 @@
-/* Strip category bars down to 首页 + 哈姆宇宙, on every page. */
+/* Category bar as a breadcrumb: 首页 (home) / 首页 » <category> (category pages). */
 'use strict';
 
-const KEEP_WORDS = ['哈姆宇宙', '首页'];
-
-hexo.extend.filter.register('after_render:html', function (str, data) {
+hexo.extend.filter.register('after_render:html', function (str) {
   if (str.indexOf('catalog-list-item') === -1) return str;
 
-  // keep only the items we want
-  str = str.replace(/<div class="catalog-list-item"[^>]*>[\s\S]*?<\/div>/g, function (m) {
-    for (const w of KEEP_WORDS) {
-      if (m.indexOf(w) >= 0) return m;
-    }
+  const m = str.match(/<div class="article-sort-title">\s*分类\s*-\s*([^<]+?)\s*<\/div>/);
+  const current = m ? m[1].trim() : null;
+
+  // keep 首页 and the category being viewed, drop every other chip
+  str = str.replace(/<div class="catalog-list-item"[^>]*>[\s\S]*?<\/div>/g, function (item) {
+    if (item.indexOf('>首页<') >= 0 || item.indexOf('id="首页"') >= 0) return item;
+    if (current && item.indexOf(current) >= 0) return item;
     return '';
   });
 
-  // drop the leading decorative icon inside the category page bar
-  str = str.replace(/(<div id="catalog-bar">)\s*<i class="anzhiyufont[^>]*><\/i>/g, '$1');
+  // 首页 » <current>
+  if (current) {
+    str = str.replace(
+      /(<div class="catalog-list-item"[^>]*>\s*<a href="\/">首页<\/a>\s*<\/div>)/,
+      '$1<span class="catalog-sep">&raquo;</span>'
+    );
+  }
 
-  // drop the scroll arrow and the "更多" link
+  // cosmetic cleanups
+  str = str.replace(/(<div id="catalog-bar">)\s*<i class="anzhiyufont[^>]*><\/i>/g, '$1');
   str = str.replace(/<div class="category-bar-next"[\s\S]*?<\/div>/g, '');
   str = str.replace(/<a class="catalog-more"[\s\S]*?<\/a>/g, '');
 

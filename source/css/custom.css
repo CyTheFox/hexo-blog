@@ -190,3 +190,13 @@
 #categoryBar .catalog-more {
   display: none !important;
 }
+
+
+/* breadcrumb separator: 首页 » 分类 */
+#catalog-list .catalog-sep {
+  margin: 0 10px;
+  color: var(--anzhiyu-secondtext, #909399);
+  font-weight: 600;
+  letter-spacing: 1px;
+  user-select: none;
+}

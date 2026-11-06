@@ -10,13 +10,13 @@ const STICKERS_DIR = '/home/dsbot/qq-workspace/stickers/files';
 
 function scanStickerImages(dir) {
   const list = [];
-  if (!fs.existsSync(dir)) return list;
   let entries;
   try {
     entries = fs.readdirSync(dir);
   } catch (e) {
     return list;
   }
+
   for (const name of entries) {
     if (!IMAGE_EXT.has(path.extname(name).toLowerCase())) continue;
     const full = path.join(dir, name);
@@ -107,9 +107,15 @@ hexo.extend.filter.register('before_post_render', function(data) {
     card.className = 'emotion-card';
     card.innerHTML = '<a class="emotion-link" href="' + url + '" target="_blank" rel="noopener"' +
       ' data-fancybox="gallery" data-caption="' + it.name + '">' +
-      '<img class="emotion-img" src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
-    grid.insertBefore(card, grid.firstChild);
+      '<img class="emotion-img nolazyload" src="' + url + '" data-lazy-src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
+    grid.appendChild(card);
   });
+  if (window.Fancybox && typeof window.Fancybox.bind === 'function') {
+    try { window.Fancybox.bind('[data-fancybox="gallery"]'); } catch (e) {}
+  }
+  if (window.lazyLoadInstance && typeof window.lazyLoadInstance.update === 'function') {
+    try { window.lazyLoadInstance.update(); } catch (e) {}
+  }
 })();
 </script>`;
 

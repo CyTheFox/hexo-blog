@@ -207,9 +207,12 @@ hexo.extend.filter.register('before_post_render', function(data) {
     card.className = 'emotion-card';
     card.innerHTML = '<a class="emotion-link" href="' + url + '" target="_blank" rel="noopener"' +
       ' data-fancybox="gallery" data-caption="' + it.name + '">' +
-      '<img class="emotion-img" src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
+      '<img class="emotion-img nolazyload" src="' + url + '" data-lazy-src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
     grid.appendChild(card);
   });
+  if (window.lazyLoadInstance && window.lazyLoadInstance.update) {
+    window.lazyLoadInstance.update();
+  }
 })();
 </script>`;
 

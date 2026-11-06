@@ -1065,7 +1065,7 @@ home_top:
       shadow: var(--anzhiyu-shadow-red)
       class: red
       icon: anzhiyu-icon-fire
-    - name: 哈姆宇宙
+    - name: 生活
       path: /categories/哈姆宇宙/
       shadow: var(--anzhiyu-shadow-green)
       class: green

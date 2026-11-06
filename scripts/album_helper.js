@@ -7,10 +7,7 @@ const crypto = require('crypto');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg']);
 
 // Known external QQ robot sticker / emotion folders to auto-map on the server
-const EXTERNAL_MAPPINGS = [
-  { target: '/home/dsbot/qq-workspace/emotion', linkName: 'qq' },
-  { target: '/home/dsbot/qq-workspace/stickers/files', linkName: 'stickers' }
-];
+const EXTERNAL_MAPPINGS = [];
 
 function ensureExternalMappings(emotionDir) {
   for (const item of EXTERNAL_MAPPINGS) {
@@ -55,6 +52,19 @@ function scanImages(dir, base) {
     const full = path.join(dir, name);
     const rel = base ? base + '/' + name : name;
     try {
+      let lst;
+      try { lst = fs.lstatSync(full); } catch (e) { continue; }
+      if (lst.isSymbolicLink()) {
+        // a symlinked file is fine (content is read); a symlinked dir is skipped
+        let tgt;
+        try { tgt = fs.statSync(full); } catch (e) { continue; }
+        if (tgt.isDirectory()) continue;
+        if (IMAGE_EXT.has(path.extname(name).toLowerCase())) {
+          list.push({ name: name, rel: rel, mtime: tgt.mtimeMs, size: tgt.size,
+                      hash: sha1(full), isLink: true });
+        }
+        continue;
+      }
       const st = fs.statSync(full);
       if (st.isDirectory()) {
         list.push(...scanImages(full, rel));

@@ -1104,7 +1104,7 @@ console:
 # 51a统计配置
 LA:
   enable: false
-  ck: 3RjVQLUuAHCKzPej
+  ck:  # 51.la 已移除
   LingQueMonitorID:
 
 # 标签卖萌

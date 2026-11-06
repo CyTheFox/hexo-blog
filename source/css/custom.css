@@ -200,3 +200,14 @@
   letter-spacing: 1px;
   user-select: none;
 }
+
+/* breadcrumb: current chip */
+#catalog-list .catalog-list-item.selected a {
+  background: var(--anzhiyu-lighttext, #ff7e00);
+  color: var(--anzhiyu-white, #fff);
+  border-radius: 8px;
+  padding: 0.1rem 0.6rem;
+}
+#catalog-list .catalog-list-item:not(.selected) a {
+  background: transparent;
+}

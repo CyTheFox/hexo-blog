@@ -2,87 +2,35 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
-const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg']);
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
-// Known external QQ robot sticker / emotion folders to auto-map on the server
-const EXTERNAL_MAPPINGS = [];
+// QQ robot sticker library directory on server
+const STICKERS_DIR = '/home/dsbot/qq-workspace/stickers/files';
 
-function ensureExternalMappings(emotionDir) {
-  for (const item of EXTERNAL_MAPPINGS) {
-    if (!fs.existsSync(item.target)) continue;
-    const linkPath = path.join(emotionDir, item.linkName);
-    if (!fs.existsSync(linkPath)) {
-      try {
-        fs.symlinkSync(item.target, linkPath, 'dir');
-      } catch (e) {}
-    }
-  }
-}
-
-function sha1(file) {
-  try {
-    const h = crypto.createHash('sha1');
-    h.update(fs.readFileSync(file));
-    return h.digest('hex');
-  } catch (e) {
-    return null;
-  }
-}
-
-function isSymlink(file) {
-  try {
-    return fs.lstatSync(file).isSymbolicLink();
-  } catch (e) {
-    return false;
-  }
-}
-
-function scanImages(dir, base, visited) {
+function scanStickerImages(dir) {
   const list = [];
-  if (typeof visited === "undefined") visited = new Set();
-
-  // follow symlinks, but never visit the same real directory twice (loop guard)
-  let real;
-  try {
-    real = fs.realpathSync(dir);
-  } catch (e) {
-    return list;
-  }
-  if (visited.has(real)) return list;
-  visited.add(real);
-
+  if (!fs.existsSync(dir)) return list;
   let entries;
   try {
     entries = fs.readdirSync(dir);
   } catch (e) {
     return list;
   }
-
   for (const name of entries) {
+    if (!IMAGE_EXT.has(path.extname(name).toLowerCase())) continue;
     const full = path.join(dir, name);
-    const rel = base ? base + '/' + name : name;
-
-    let st;
     try {
-      st = fs.statSync(full); // follows symlinks
-    } catch (e) {
-      continue;
-    }
-
-    if (st.isDirectory()) {
-      list.push(...scanImages(full, rel, visited));
-    } else if (IMAGE_EXT.has(path.extname(name).toLowerCase())) {
-      list.push({
-        name: name,
-        rel: rel,
-        mtime: st.mtimeMs,
-        size: st.size,
-        hash: sha1(full),
-        isLink: isSymlink(full),
-      });
-    }
+      const st = fs.statSync(full);
+      // Filter out invalid or dummy test files (< 500 bytes)
+      if (st.isFile() && st.size > 500) {
+        list.push({
+          name: name,
+          size: st.size,
+          mtime: st.mtimeMs
+        });
+      }
+    } catch (e) {}
   }
   return list;
 }
@@ -93,14 +41,8 @@ function esc(s) {
   }[c]));
 }
 
-// 1. Helper patch to support root prefix (e.g. /blog) in album path_name matching and auto-mapping
+// 1. Helper patch to support root prefix (e.g. /blog) in album path_name matching
 hexo.on('ready', () => {
-  const emotionDir = path.join(hexo.source_dir, 'album', 'emotion');
-  if (!fs.existsSync(emotionDir)) {
-    try { fs.mkdirSync(emotionDir, { recursive: true }); } catch (e) {}
-  }
-  ensureExternalMappings(emotionDir);
-
   const originalIsCurrent = hexo.extend.helper.get('is_current');
   if (originalIsCurrent) {
     hexo.extend.helper.register('is_current', function(p, strict) {
@@ -119,102 +61,66 @@ hexo.on('ready', () => {
 hexo.extend.filter.register('before_post_render', function(data) {
   if (data.source && (data.source === 'album/index.md' || data.source === 'album\\index.md')) {
     const root = (hexo.config.root || '/').replace(/\/?$/, '/');
-    const emotionDir = path.join(hexo.source_dir, 'album', 'emotion');
 
-    if (!fs.existsSync(emotionDir)) {
-      try { fs.mkdirSync(emotionDir, { recursive: true }); } catch (e) {}
-    }
-    ensureExternalMappings(emotionDir);
-
-    const rawImages = scanImages(emotionDir, '');
+    // Scan QQ robot sticker files directly
+    const rawImages = scanStickerImages(STICKERS_DIR);
     rawImages.sort((a, b) => b.mtime - a.mtime);
 
-    // de-duplicate by content: keep real files over symlinks, shorter names first,
-    // so the same picture never appears twice
-    rawImages.sort((a, b) => {
-      if (a.isLink !== b.isLink) return a.isLink ? 1 : -1;
-      if (a.name.length !== b.name.length) return a.name.length - b.name.length;
-      return b.mtime - a.mtime;
-    });
-    const seen = new Set();
-    const uniqueImages = [];
-    for (const img of rawImages) {
-      const key = img.hash || img.rel;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      uniqueImages.push(img);
-    }
-    uniqueImages.sort((a, b) => b.mtime - a.mtime);
-
-    let html = '';
-    if (uniqueImages.length > 0) {
-      const cards = uniqueImages.map(item => {
-        const url = root + 'album/emotion/' + item.rel.split('/').map(encodeURIComponent).join('/');
-        const caption = esc(item.name);
-        return [
-          '    <div class="emotion-card">',
-          `      <a class="emotion-link" href="${url}" target="_blank" rel="noopener" data-fancybox="gallery" data-caption="${caption}">`,
-          `        <img class="emotion-img" src="${url}" alt="${caption}" loading="lazy" decoding="async">`,
-          '      </a>',
-          '    </div>'
-        ].join('\n');
-      }).join('\n');
-
-      html = [
-        '<div id="album">',
-        '  <div class="emotion-waterfall">',
-        cards,
-        '  </div>',
-        '</div>'
+    const cards = rawImages.map(item => {
+      const url = root + 'stickers/' + encodeURIComponent(item.name);
+      const caption = esc(item.name);
+      return [
+        '    <div class="emotion-card">',
+        `      <a class="emotion-link" href="${url}" target="_blank" rel="noopener" data-fancybox="gallery" data-caption="${caption}">`,
+        `        <img class="emotion-img" src="${url}" alt="${caption}" loading="lazy" decoding="async">`,
+        '      </a>',
+        '    </div>'
       ].join('\n');
-    } else {
-      html = [
-        '<div id="album">',
-        '  <div class="emotion-empty">',
-        '    <p>暂无表情图片，请将图片放置在 source/album/emotion/ 目录下</p>',
-        '  </div>',
-        '</div>'
-      ].join('\n');
-    }
+    }).join('\n');
 
-
-    // STICKERS_JSON_GALLERY: append images served directly by nginx (/blog/stickers/)
-    html += `
+    // Dynamic runtime loader: automatically pulls any newly added stickers from /blog/stickers/
+    const dynamicLoader = `
 <script>
 (async function () {
   var grid = document.querySelector('.emotion-waterfall');
   if (!grid) return;
   var root = ${JSON.stringify(root)};
-  var exts = /\.(jpe?g|png|gif|webp|avif)$/i;
-  var knownSizes = new Set(${JSON.stringify(uniqueImages.map(function (x) { return x.size; }))});
+  var exts = /\\.(jpe?g|png|gif|webp|avif)$/i;
   var known = new Set(Array.prototype.map.call(grid.querySelectorAll('img'), function (i) {
     return decodeURIComponent(i.getAttribute('src') || '');
   }));
   var res, list;
   try {
-    res = await fetch(root + 'stickers/');
+    res = await fetch(root + 'stickers/?t=' + Date.now());
     if (!res.ok) return;
     list = await res.json();
   } catch (e) { return; }
   if (!Array.isArray(list)) return;
-  list.sort(function (a, b) { return (b.mtime || 0) - (a.mtime || 0); });
+  list.sort(function (a, b) { return (new Date(b.mtime).getTime() || 0) - (new Date(a.mtime).getTime() || 0); });
   list.forEach(function (it) {
     if (it.type !== 'file' || !exts.test(it.name)) return;
+    if (it.size && it.size < 500) return; // skip dummy test files
     var url = root + 'stickers/' + encodeURIComponent(it.name);
-    if (known.has('/' + url)) return;
-    if (knownSizes.has(it.size)) return;  // same file already shown from the repo
+    if (known.has(url) || known.has('/' + url)) return;
+    known.add(url);
     var card = document.createElement('div');
     card.className = 'emotion-card';
     card.innerHTML = '<a class="emotion-link" href="' + url + '" target="_blank" rel="noopener"' +
       ' data-fancybox="gallery" data-caption="' + it.name + '">' +
-      '<img class="emotion-img nolazyload" src="' + url + '" data-lazy-src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
-    grid.appendChild(card);
+      '<img class="emotion-img" src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
+    grid.insertBefore(card, grid.firstChild);
   });
-  if (window.lazyLoadInstance && window.lazyLoadInstance.update) {
-    window.lazyLoadInstance.update();
-  }
 })();
 </script>`;
+
+    const html = [
+      '<div id="album">',
+      '  <div class="emotion-waterfall">',
+      cards,
+      '  </div>',
+      dynamicLoader,
+      '</div>'
+    ].join('\n');
 
     data.content = html;
   }

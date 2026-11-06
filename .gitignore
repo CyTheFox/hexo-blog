@@ -9,3 +9,6 @@ _multiconfig.yml
 *.bak*
 
 .admin-backups/
+source/album/emotion/qq
+source/album/emotion/stickers
+

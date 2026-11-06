@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg']);
 
@@ -20,6 +21,24 @@ function ensureExternalMappings(emotionDir) {
         fs.symlinkSync(item.target, linkPath, 'dir');
       } catch (e) {}
     }
+  }
+}
+
+function sha1(file) {
+  try {
+    const h = crypto.createHash('sha1');
+    h.update(fs.readFileSync(file));
+    return h.digest('hex');
+  } catch (e) {
+    return null;
+  }
+}
+
+function isSymlink(file) {
+  try {
+    return fs.lstatSync(file).isSymbolicLink();
+  } catch (e) {
+    return false;
   }
 }
 
@@ -43,7 +62,10 @@ function scanImages(dir, base) {
         list.push({
           name: name,
           rel: rel,
-          mtime: st.mtimeMs
+          mtime: st.mtimeMs,
+          size: st.size,
+          hash: sha1(full),
+          isLink: isSymlink(full)
         });
       }
     } catch (e) {}
@@ -93,9 +115,26 @@ hexo.extend.filter.register('before_post_render', function(data) {
     const rawImages = scanImages(emotionDir, '');
     rawImages.sort((a, b) => b.mtime - a.mtime);
 
+    // de-duplicate by content: keep real files over symlinks, shorter names first,
+    // so the same picture never appears twice
+    rawImages.sort((a, b) => {
+      if (a.isLink !== b.isLink) return a.isLink ? 1 : -1;
+      if (a.name.length !== b.name.length) return a.name.length - b.name.length;
+      return b.mtime - a.mtime;
+    });
+    const seen = new Set();
+    const uniqueImages = [];
+    for (const img of rawImages) {
+      const key = img.hash || img.rel;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueImages.push(img);
+    }
+    uniqueImages.sort((a, b) => b.mtime - a.mtime);
+
     let html = '';
-    if (rawImages.length > 0) {
-      const cards = rawImages.map(item => {
+    if (uniqueImages.length > 0) {
+      const cards = uniqueImages.map(item => {
         const url = root + 'album/emotion/' + item.rel.split('/').map(encodeURIComponent).join('/');
         const caption = esc(item.name);
         return [

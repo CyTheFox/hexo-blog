@@ -172,3 +172,11 @@
   color: var(--anzhiyu-secondtext, #858585);
   font-size: 1rem;
 }
+
+#page:has(#album),
+#article-container:has(#album) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}

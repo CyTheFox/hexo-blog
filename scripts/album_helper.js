@@ -28,26 +28,10 @@ function scanImages(dir, base) {
   return list;
 }
 
-function getPugTemplate() {
-  return [
-    '#album',
-    '  - let images = (site.data && site.data.emotion_images) ? site.data.emotion_images : ((site.emotion_images) ? site.emotion_images : [])',
-    '  if images && images.length',
-    '    .emotion-waterfall',
-    '      each img in images',
-    '        .emotion-card',
-    '          a.emotion-link(href=img.url, target="_blank", rel="noopener", data-fancybox="gallery", data-caption=img.name)',
-    '            img.emotion-img(src=img.url, alt=img.name, loading="lazy", decoding="async")',
-    '  else',
-    '    .emotion-empty',
-    '      p 暂无表情图片，请将图片放置在 source/album/emotion/ 目录下'
-  ].join('\n');
-}
-
-function registerAlbumView() {
-  if (hexo.theme && typeof hexo.theme.setView === 'function') {
-    hexo.theme.setView('includes/page/album.pug', getPugTemplate());
-  }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
 
 // 1. Helper patch to support root prefix (e.g. /blog) in album path_name matching
@@ -64,34 +48,53 @@ hexo.on('ready', () => {
       return originalIsCurrent.call(this, p, strict);
     });
   }
-
-  registerAlbumView();
 });
 
-// 2. Scan images before every generation
-hexo.extend.filter.register('before_generate', function() {
-  const root = (hexo.config.root || '/').replace(/\/?$/, '/');
-  const emotionDir = path.join(hexo.source_dir, 'album', 'emotion');
+// 2. Inject responsive waterfall gallery HTML for source/album/index.md
+hexo.extend.filter.register('before_post_render', function(data) {
+  if (data.source && (data.source === 'album/index.md' || data.source === 'album\\index.md')) {
+    const root = (hexo.config.root || '/').replace(/\/?$/, '/');
+    const emotionDir = path.join(hexo.source_dir, 'album', 'emotion');
 
-  if (!fs.existsSync(emotionDir)) {
-    fs.mkdirSync(emotionDir, { recursive: true });
+    if (!fs.existsSync(emotionDir)) {
+      fs.mkdirSync(emotionDir, { recursive: true });
+    }
+
+    const rawImages = scanImages(emotionDir, '');
+    rawImages.sort((a, b) => b.mtime - a.mtime);
+
+    let html = '';
+    if (rawImages.length > 0) {
+      const cards = rawImages.map(item => {
+        const url = root + 'album/emotion/' + item.rel.split('/').map(encodeURIComponent).join('/');
+        const caption = esc(item.name);
+        return [
+          '    <div class="emotion-card">',
+          `      <a class="emotion-link" href="${url}" target="_blank" rel="noopener" data-fancybox="gallery" data-caption="${caption}">`,
+          `        <img class="emotion-img" src="${url}" alt="${caption}" loading="lazy" decoding="async">`,
+          '      </a>',
+          '    </div>'
+        ].join('\n');
+      }).join('\n');
+
+      html = [
+        '<div id="album">',
+        '  <div class="emotion-waterfall">',
+        cards,
+        '  </div>',
+        '</div>'
+      ].join('\n');
+    } else {
+      html = [
+        '<div id="album">',
+        '  <div class="emotion-empty">',
+        '    <p>暂无表情图片，请将图片放置在 source/album/emotion/ 目录下</p>',
+        '  </div>',
+        '</div>'
+      ].join('\n');
+    }
+
+    data.content = html;
   }
-
-  const rawImages = scanImages(emotionDir, '');
-  // Sort newest first
-  rawImages.sort((a, b) => b.mtime - a.mtime);
-
-  const images = rawImages.map(item => ({
-    name: item.name,
-    url: root + 'album/emotion/' + item.rel.split('/').map(encodeURIComponent).join('/'),
-    mtime: item.mtime
-  }));
-
-  // Attach to locals so Pug templates have access
-  hexo.locals.set('emotion_images', () => images);
-  const data = hexo.locals.get('data') || {};
-  data.emotion_images = images;
-  hexo.locals.set('data', () => data);
-
-  registerAlbumView();
+  return data;
 });

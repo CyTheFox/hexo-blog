@@ -84,6 +84,10 @@ hexo.extend.filter.register('before_post_render', function(data) {
 (async function () {
   var grid = document.querySelector('.emotion-waterfall');
   if (!grid) return;
+  // 同一份 DOM 只渲染一次：pjax 重新进入或脚本重复执行都不会叠加卡片
+  if (grid.dataset.emotionLoaded === '1') return;
+  grid.dataset.emotionLoaded = '1';
+  Array.prototype.forEach.call(grid.querySelectorAll('.emotion-card[data-emotion="1"]'), function (el) { el.remove(); });
   var root = ${JSON.stringify(root)};
   var exts = /\\.(jpe?g|png|gif|webp|avif)$/i;
   var known = new Set(Array.prototype.map.call(grid.querySelectorAll('img'), function (i) {
@@ -105,6 +109,7 @@ hexo.extend.filter.register('before_post_render', function(data) {
     known.add(url);
     var card = document.createElement('div');
     card.className = 'emotion-card';
+    card.setAttribute('data-emotion', '1');
     card.innerHTML = '<a class="emotion-link" href="' + url + '" target="_blank" rel="noopener"' +
       ' data-fancybox="gallery" data-caption="' + it.name + '">' +
       '<img class="emotion-img nolazyload" src="' + url + '" data-lazy-src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';

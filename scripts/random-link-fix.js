@@ -1,22 +1,31 @@
-/* Fix the theme's "random post" wiring for a site served under a sub-path (/blog/). */
+/* Make the theme's "随机文章 / 随便逛逛" work on a site served from /blog/. */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const ROOT_SCRIPT =
+  '<script>(function(){' +
+  'function fix(){' +
+  'if(typeof window.posts==="undefined"||typeof window.toRandomPost!=="function")return false;' +
+  'window.toRandomPost=function(){' +
+  'var p=window.posts[Math.floor(Math.random()*window.posts.length)];' +
+  'var u="' + '/blog/' + '"+p;' +
+  'if(window.pjax&&typeof window.pjax.loadUrl==="function"){window.pjax.loadUrl(u);}else{window.location.href=u;}' +
+  '};return true;}' +
+  'if(!fix()){var n=0;var t=setInterval(function(){if(fix()||++n>50){clearInterval(t);}},100);}' +
+  '})();</script>';
 
 hexo.extend.filter.register('after_render:html', function (str) {
-  if (str.indexOf('/anzhiyu/random.js') === -1) return str;
   const root = hexo.config.root || '/';
-  return str.split('src="/anzhiyu/random.js"').join('src="' + root + 'anzhiyu/random.js"');
-});
 
-hexo.extend.filter.register('after_generate', function () {
-  const root = hexo.config.root || '/';
-  const file = path.join(hexo.public_dir, 'anzhiyu', 'random.js');
-  if (!fs.existsSync(file)) return;
-  let s = fs.readFileSync(file, 'utf8');
-  const before = s;
-  s = s.replace("pjax.loadUrl('/'+posts", "pjax.loadUrl('" + root + "'+posts");
-  s = s.replace("window.location.href='/'+posts", "window.location.href='" + root + "'+posts");
-  if (s !== before) fs.writeFileSync(file, s);
+  // 1. the async loader points at /anzhiyu/random.js without the site root
+  if (str.indexOf('src="/anzhiyu/random.js"') !== -1) {
+    str = str.split('src="/anzhiyu/random.js"').join('src="' + root + 'anzhiyu/random.js"');
+  }
+
+  // 2. the generated function jumps to "/<post>" (missing the site root): override it
+  if (str.indexOf('</body>') !== -1 && str.indexOf('toRandomPost=function') === -1) {
+    const script = ROOT_SCRIPT.replace("'/blog/'", "'" + root + "'");
+    str = str.replace('</body>', script + '</body>');
+  }
+
+  return str;
 });

@@ -39,46 +39,50 @@ function isSymlink(file) {
   }
 }
 
-function scanImages(dir, base) {
+function scanImages(dir, base, visited) {
   const list = [];
-  if (!fs.existsSync(dir)) return list;
+  if (typeof visited === "undefined") visited = new Set();
+
+  // follow symlinks, but never visit the same real directory twice (loop guard)
+  let real;
+  try {
+    real = fs.realpathSync(dir);
+  } catch (e) {
+    return list;
+  }
+  if (visited.has(real)) return list;
+  visited.add(real);
+
   let entries;
   try {
     entries = fs.readdirSync(dir);
   } catch (e) {
     return list;
   }
+
   for (const name of entries) {
     const full = path.join(dir, name);
     const rel = base ? base + '/' + name : name;
+
+    let st;
     try {
-      let lst;
-      try { lst = fs.lstatSync(full); } catch (e) { continue; }
-      if (lst.isSymbolicLink()) {
-        // a symlinked file is fine (content is read); a symlinked dir is skipped
-        let tgt;
-        try { tgt = fs.statSync(full); } catch (e) { continue; }
-        if (tgt.isDirectory()) continue;
-        if (IMAGE_EXT.has(path.extname(name).toLowerCase())) {
-          list.push({ name: name, rel: rel, mtime: tgt.mtimeMs, size: tgt.size,
-                      hash: sha1(full), isLink: true });
-        }
-        continue;
-      }
-      const st = fs.statSync(full);
-      if (st.isDirectory()) {
-        list.push(...scanImages(full, rel));
-      } else if (IMAGE_EXT.has(path.extname(name).toLowerCase())) {
-        list.push({
-          name: name,
-          rel: rel,
-          mtime: st.mtimeMs,
-          size: st.size,
-          hash: sha1(full),
-          isLink: isSymlink(full)
-        });
-      }
-    } catch (e) {}
+      st = fs.statSync(full); // follows symlinks
+    } catch (e) {
+      continue;
+    }
+
+    if (st.isDirectory()) {
+      list.push(...scanImages(full, rel, visited));
+    } else if (IMAGE_EXT.has(path.extname(name).toLowerCase())) {
+      list.push({
+        name: name,
+        rel: rel,
+        mtime: st.mtimeMs,
+        size: st.size,
+        hash: sha1(full),
+        isLink: isSymlink(full),
+      });
+    }
   }
   return list;
 }

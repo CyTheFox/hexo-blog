@@ -14,6 +14,18 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Pull sticker library from server
+        continue-on-error: true
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 59.110.213.166 >> ~/.ssh/known_hosts 2>/dev/null || true
+          mkdir -p source/album/emotion/stickers
+          rsync -az --exclude '*.bak' \
+            dsbot@59.110.213.166:/home/dsbot/qq-workspace/stickers/files/ \
+            source/album/emotion/stickers/ || echo "sticker sync skipped"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

@@ -180,3 +180,13 @@
   box-shadow: none !important;
   padding: 0 !important;
 }
+
+
+/* ========================================================
+   Home category bar: keep only "首页"
+   ======================================================== */
+#recent-posts #categoryBar .catalog-list-item:not([id="首页"]),
+#recent-posts #categoryBar .category-bar-next,
+#recent-posts #categoryBar .catalog-more {
+  display: none !important;
+}

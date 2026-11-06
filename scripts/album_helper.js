@@ -177,6 +177,42 @@ hexo.extend.filter.register('before_post_render', function(data) {
       ].join('\n');
     }
 
+
+    // STICKERS_JSON_GALLERY: append images served directly by nginx (/blog/stickers/)
+    html += `
+<script>
+(async function () {
+  var grid = document.querySelector('.emotion-waterfall');
+  if (!grid) return;
+  var root = ${JSON.stringify(root)};
+  var exts = /\.(jpe?g|png|gif|webp|avif)$/i;
+  var knownSizes = new Set(${JSON.stringify(uniqueImages.map(function (x) { return x.size; }))});
+  var known = new Set(Array.prototype.map.call(grid.querySelectorAll('img'), function (i) {
+    return decodeURIComponent(i.getAttribute('src') || '');
+  }));
+  var res, list;
+  try {
+    res = await fetch(root + 'stickers/');
+    if (!res.ok) return;
+    list = await res.json();
+  } catch (e) { return; }
+  if (!Array.isArray(list)) return;
+  list.sort(function (a, b) { return (b.mtime || 0) - (a.mtime || 0); });
+  list.forEach(function (it) {
+    if (it.type !== 'file' || !exts.test(it.name)) return;
+    var url = root + 'stickers/' + encodeURIComponent(it.name);
+    if (known.has('/' + url)) return;
+    if (knownSizes.has(it.size)) return;  // same file already shown from the repo
+    var card = document.createElement('div');
+    card.className = 'emotion-card';
+    card.innerHTML = '<a class="emotion-link" href="' + url + '" target="_blank" rel="noopener"' +
+      ' data-fancybox="gallery" data-caption="' + it.name + '">' +
+      '<img class="emotion-img" src="' + url + '" alt="' + it.name + '" loading="lazy" decoding="async"></a>';
+    grid.appendChild(card);
+  });
+})();
+</script>`;
+
     data.content = html;
   }
   return data;

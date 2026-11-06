@@ -185,8 +185,8 @@
 /* ========================================================
    Home category bar: keep only "首页"
    ======================================================== */
-#recent-posts #categoryBar .catalog-list-item:not([id="首页"]),
-#recent-posts #categoryBar .category-bar-next,
-#recent-posts #categoryBar .catalog-more {
+#categoryBar .catalog-list-item:not([id="首页"]):not([id="/categories/哈姆宇宙/"]),
+#categoryBar #category-bar-next,
+#categoryBar .catalog-more {
   display: none !important;
 }

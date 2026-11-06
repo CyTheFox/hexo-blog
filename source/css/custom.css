@@ -211,3 +211,9 @@
 #catalog-list .catalog-list-item:not(.selected) a {
   background: transparent;
 }
+
+/* keep the music player visible when the console is open
+   (the theme hides it with @media (max-height: 800px)) */
+body:has(#console.show) #nav-music {
+  display: flex !important;
+}

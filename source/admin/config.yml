@@ -28,3 +28,48 @@ collections:
       - { label: "标签", name: "tags", widget: "list", required: false }
       - { label: "分类", name: "categories", widget: "list", required: false }
       - { label: "正文内容", name: "body", widget: "vditor" }
+
+  - name: "essay"
+    label: "闲言碎语"
+    label_singular: "短文"
+    editor:
+      preview: false
+    files:
+      - name: "essay_data"
+        label: "短文列表"
+        file: "source/_data/essay_admin.yml"
+        fields:
+          - { label: "页面标题", name: "title", widget: "string", default: "闲言碎语" }
+          - { label: "副标题", name: "subTitle", widget: "string", required: false }
+          - { label: "页头说明", name: "tips", widget: "string", required: false, hint: "显示在页头卡片上的小字" }
+          - { label: "按钮文字", name: "buttonText", widget: "string", default: "全部短文" }
+          - { label: "按钮链接", name: "buttonLink", widget: "string", default: "/essay/" }
+          - { label: "页头背景图", name: "top_background", widget: "image", required: false }
+          - { label: "单页最多显示条数", name: "limit", widget: "number", value_type: "int", default: 20 }
+          - { label: "首页显示滚动条", name: "home_essay", widget: "boolean", default: true }
+          - label: "短文"
+            name: "essay_list"
+            widget: "list"
+            summary: "{{fields.content}}"
+            fields:
+              - { label: "内容", name: "content", widget: "text" }
+              - { label: "时间", name: "date", widget: "datetime", format: "YYYY-MM-DD HH:mm:ss", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss" }
+              - { label: "来源", name: "from", widget: "string", required: false, hint: "如：家里 / 手机 / 公司" }
+              - { label: "位置", name: "address", widget: "string", required: false }
+              - { label: "附带链接", name: "link", widget: "string", required: false }
+              - label: "图片"
+                name: "image"
+                widget: "list"
+                required: false
+                field:
+                  label: "图片"
+                  name: "image"
+                  widget: "image"
+              - label: "视频"
+                name: "video"
+                widget: "list"
+                required: false
+                field:
+                  label: "视频地址"
+                  name: "video"
+                  widget: "string"

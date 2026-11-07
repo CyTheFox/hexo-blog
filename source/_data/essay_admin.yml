@@ -1,0 +1,12 @@
+title: 闲言碎语
+subTitle: 没头没尾的想法
+tips: 不成篇的碎片、半夜冒出来的念头，都放这儿
+buttonText: 全部短文
+buttonLink: /essay/
+limit: 20
+home_essay: true
+essay_list:
+  - content: 新开了个角落：以后不成篇的碎片都扔这儿，不进文章列表，也不算「已发表」。
+    date: 2026-11-07 17:20:00
+    from: 家里
+    address: 北京

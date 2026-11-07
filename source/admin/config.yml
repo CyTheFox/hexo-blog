@@ -39,12 +39,6 @@ collections:
         label: "短文列表"
         file: "source/_data/essay_admin.yml"
         fields:
-          - { label: "页面标题", name: "title", widget: "string", default: "闲言碎语" }
-          - { label: "副标题", name: "subTitle", widget: "string", required: false }
-          - { label: "页头说明", name: "tips", widget: "string", required: false, hint: "显示在页头卡片上的小字" }
-          - { label: "按钮文字", name: "buttonText", widget: "string", default: "全部短文" }
-          - { label: "按钮链接", name: "buttonLink", widget: "string", default: "/essay/" }
-          - { label: "页头背景图", name: "top_background", widget: "image", required: false }
           - { label: "单页最多显示条数", name: "limit", widget: "number", value_type: "int", default: 20 }
           - { label: "首页显示滚动条", name: "home_essay", widget: "boolean", default: true }
           - label: "短文"

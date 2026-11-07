@@ -95,3 +95,16 @@ hexo.extend.filter.register('template_locals', function (locals) {
   }
   return locals;
 });
+
+// 短文页顶部那张大卡片（标题/副标题/说明/全部短文按钮）不需要展示，
+// 渲染后直接剥掉；列表为空时连同「只展示最近 N 条短文」一起清掉。
+hexo.extend.filter.register('after_render:html', function (str) {
+  if (str.indexOf('essayPage') === -1) return str;
+
+  var out = str.replace(/<div class="author-content[^"]*essayPage[^>]*>[\s\S]*?(?=<div id="bber")/, '');
+
+  if (out.indexOf('class="bber-item"') === -1) {
+    out = out.replace(/<div id="bber-tips"[\s\S]*?<\/div>/, '');
+  }
+  return out;
+});

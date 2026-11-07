@@ -1,3 +1,4 @@
+---
 title: README 面子工程
 copyright_author: HIOPLE
 date: 2026-11-06 23:00:00
@@ -8,191 +9,283 @@ categories:
   - tech
 ---
 
-README 的渲染依据是 **GitHub Flavored Markdown（GFM）**，不是一般的 Markdown。GFM 是 CommonMark 的**严格超集**，表格、任务列表、删除线、裸 URL 自动链接等属于**规范明确收录**的扩展。Alert、数学公式、Mermaid（类图） 等属于 **GitHub 平台原生渲染能力**，不在 GFM 规范文本中，但在 README 中可直接使用。
+## 首屏
 
+首屏结构：
+
+1. 项目图标或 Logo
+2. 项目名称
+3. 一句话介绍
+4. 徽标行
+5. 快速开始或在线地址
+
+```html
+<div align="center">
+
+<img src=".github/assets/logo.png" alt="项目 Logo" width="96">
+
+# my-project
+
+一个用于处理配置文件的轻量工具。
+
+[![构建](https://github.com/user/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/user/repo/actions/workflows/ci.yml) [![版本](https://img.shields.io/npm/v/my-project)](https://www.npmjs.com/package/my-project) [![许可证](https://img.shields.io/github/license/user/repo)](./LICENSE)
+
+</div>
+```
+
+`<div align="center">` 适合控制首屏居中；图片建议添加 `alt`，并限制宽度，避免大图把标题和徽标推到首屏之外。徽标可以写在同一行，GitHub 会按可用宽度自动换行。
+
+## 徽标是什么
+
+徽标（badge）是一个小型状态标签，通常包含名称、数值和颜色。它适合展示可验证的信息，例如：
+
+- 构建和测试是否通过
+- 当前发布版本
+- 使用的运行时或框架
+- 许可证
+- 覆盖率、下载量或文档入口
+
+徽标通常由两部分组成：左侧是图片地址，右侧是跳转链接。
+
+```markdown
+[![显示文本](徽标图片地址)](点击后的链接)
+```
+
+例如，GitHub Actions 的构建徽标：
+
+```markdown
+[![构建与部署](https://github.com/CyTheFox/hexo-blog/actions/workflows/deploy.yml/badge.svg)](https://github.com/CyTheFox/hexo-blog/actions/workflows/deploy.yml)
+```
+
+图片地址显示 workflow 当前状态，需要指向项目真实的 workflow 文件位置。
+
+## Shields.io 徽标
+
+[Shields.io](https://shields.io/) 提供大量现成徽标，也支持自定义文字和颜色。常见格式是：
+
+```text
+https://img.shields.io/badge/左侧文字-右侧文字-颜色
+```
+
+示例：
+
+```markdown
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Hexo](https://img.shields.io/badge/Hexo-8.1.2-0E83CD?logo=hexo&logoColor=white)](https://hexo.io/)
+```
+
+常用参数：
+
+| 参数 | 作用 | 示例 |
+| --- | --- | --- |
+| `logo` | 添加品牌图标 | `logo=node.js` |
+| `logoColor` | 设置图标颜色 | `logoColor=white` |
+| `style` | 设置外观 | `style=flat-square` |
+| `color` | 设置颜色 | `color=brightgreen` |
+| `label` | 自定义左侧文本 | `label=运行环境` |
+
+参数使用 `?` 开始，多个参数用 `&` 连接。文字中包含空格或特殊字符时，优先使用 Shields.io 的查询参数或 URL 编码，避免链接失效。
+
+注意，由于`左侧文字-右侧文字-颜色`为徽标格式，故文本中的`-`需要转义，写作`--`。
+
+### 常用徽标来源
+
+- **GitHub Actions**：`/actions/workflows/<workflow>.yml/badge.svg`
+- **GitHub Release**：`https://img.shields.io/github/v/release/user/repo`
+- **npm 版本**：`https://img.shields.io/npm/v/package-name`
+- **许可证**：`https://img.shields.io/github/license/user/repo`
+- **下载量**：`https://img.shields.io/npm/dm/package-name`
+- **代码覆盖率**：使用项目实际接入的覆盖率服务徽标
+
+版本号、Node.js 版本和主题名称应与项目配置保持一致，对于版本号，可以编写 workflow 在推送 release 时自动修改 README。
+
+## 一行徽标布局
+
+徽标想放在一行，直接连续书写即可：
+
+```markdown
+[![CI](...)](...) [![版本](...)](...) [![License](...)](...)
+```
+
+如果希望徽标之间更紧凑，可以使用 HTML，但不建议用 `<p>` 包裹 Markdown 徽标。部分渲染器会把 Markdown 当作普通文本，导致徽标不显示。需要严格控制间距时，可使用 HTML 图片链接：
+
+```html
+<a href="https://github.com/user/repo/actions"><img src="https://github.com/user/repo/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/user/repo"><img src="https://img.shields.io/github/stars/user/repo" alt="Stars"></a>
+```
+
+一般 README 优先使用 Markdown 写法，兼容性和可读性更好。
+
+## 图片和 Logo 的装饰
+
+### 使用仓库内图片
+
+仓库内图片比临时图床更稳定，也方便版本管理：
+
+```markdown
+![项目预览](./.github/assets/preview.png)
+```
+
+在 GitHub README 中，`./` 表示当前 README 所在目录。若图片位于 `source/img`，需要根据 README 的实际位置填写相对路径。
+
+建议：
+
+- 文件名使用英文、数字和短横线
+- 图片控制在合理尺寸，避免加载过慢
+- 所有图片添加有意义的 `alt` 代替显示文本
+- Logo 使用固定宽度，例如 `width="64"` 或 `width="96"`
+
+### 图片居中和并排
+
+```html
+<p align="center">
+  <img src="./docs/demo-light.png" alt="浅色主题预览" width="48%">
+  <img src="./docs/demo-dark.png" alt="深色主题预览" width="48%">
+</p>
+```
+
+并排图片适合展示浅色/深色主题、移动端/桌面端或改造前/改造后效果。移动端屏幕较窄时，两张图可能自动换行，因此不要依赖精确的固定宽度。
+
+### 技术栈用徽标或短列表
+
+技术栈不必写成长篇介绍，可以用徽标和短列表组合：
+
+```markdown
+## 技术栈
+
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+
+- 构建：Vite
+- 运行环境：Node.js
+- 内容格式：Markdown
+```
+
+徽标负责快速识别，文字负责补充项目中的实际用途。不要把没有使用的框架全部列上去，也不要用徽标代替安装和配置说明。
+
+## 常用装饰元素
+
+### 分隔线
+
+用水平线区分首屏和正文，简单且稳定：
+
+```markdown
 ---
-
-# GitHub Alert
-
-### 五种类型
-
-| 类型标识符 | 中文含义 | 默认颜色 | 图标 | 建议用途 |
-|---|---|---|---|---|
-| `[!NOTE]` | 备注 | 蓝色 | 信息圆圈 | 用户浏览时应知晓的有用信息 |
-| `[!TIP]` | 提示 | 绿色 | 灯泡 | 帮助更轻松完成任务的建议 |
-| `[!IMPORTANT]` | 重要 | 紫色 | 验证徽章 | 达成目标所必需的关键信息 |
-| `[!WARNING]` | 警告 | 橙色/黄色 | 警告三角 | 因潜在风险需立即关注的内容 |
-| `[!CAUTION]` | 小心 | 红色 | 停止八边形 | 操作的潜在负面后果或危险操作 |
-
-用法：
-
-```markdown
-> [!NOTE]
-> NOTE 内容
 ```
 
+不要连续使用多条分隔线，也不要让每个小段落都被线条切开，否则页面会显得零碎。
 
-**① 大小写不敏感**
+### 折叠详情
 
-`> [!note]` 与 `> [!NOTE]` 渲染相同。规范不强制大写，但社区惯例**全大写**，辨识度更高。
+长日志、完整配置和高级选项可以折叠，保持首屏简洁：
 
-**② 可自定义标题**
+```html
+<details>
+<summary>查看完整配置</summary>
 
-在 `[!NOTE]` 下一行直接写标题，会覆盖默认的 “Note”：
-
-```markdown
-> [!NOTE] 迁移提醒
-> 本项目的配置格式将在 v3.0 中变更，请提前阅读迁移指南。
+```yaml
+server:
+  port: 3000
+  host: 0.0.0.0
 ```
 
-**③ Alert 内可包含多个段落**
+</details>
+```
 
-用空 `>` 行分隔，不会被截断：
+折叠内容适合低频信息，不要把快速开始、安装命令或核心限制藏起来。
+
+### 引用提示
+
+简单提醒可以使用引用块：
+
+```markdown
+> 提示：首次运行前请先执行 `npm install`。
+```
+
+GitHub 的提示块也很适合 README，但它属于 GitHub 的渲染能力，不是所有 Markdown 平台都支持。若文档需要在多个平台发布，普通引用块更稳妥。
 
 ```markdown
 > [!WARNING]
-> 以下操作会永久删除远程分支。
->
-> 确认已合并后再执行：
-> `git push origin --delete feature/xxx`
+> 部署命令会覆盖服务器上的静态文件，请确认目标目录。
 ```
 
-**④ 可嵌套在列表项中**
+### 目录
 
-用于在步骤说明里插入注意事项。
-
----
-
-## GFM 规范收录的扩展语法
-
-### 表格
-
-- 不要求列宽对齐，但源码对齐便于维护。
-- 分隔行中的 `:` 控制列对齐：
+较长的 README 可以加入目录。最简单的做法是手写链接：
 
 ```markdown
-| 参数 | 类型 | 默认值 | 说明 |
-| :--- | :---: | ---: | :--- |
-| `timeout` | `number` | `30` | 请求超时（秒） |
+## 目录
+
+- [特性](#特性)
+- [快速开始](#快速开始)
+- [部署](#部署)
+- [许可证](#许可证)
 ```
 
-- `:---` 左对齐；`:---:` 居中；`---:` 右对齐。
+## 代码块的装饰与使用
 
-### 任务列表
+代码块应标注语言，让 GitHub 自动进行语法高亮：
 
-- 渲染为勾选框；Issue/PR 中可交互，README 中为只读展示。
-
-```markdown
-- [x] 完成核心 API 设计
-- [x] 编写单元测试
-- [ ] 补充端到端测试
-- [ ] 发布 v1.0
+```bash
+npm install
+npm run server
 ```
 
-- `- [ ]` 未完成；`- [x]` 已完成（`x` 大小写均可）。
-- 方括号内**有空格**是未选中状态。
-
-### 删除线
-
-```markdown
-~~这段文字会被划线~~
+```yaml
+site:
+  title: My Blog
 ```
 
-- 三个波浪线 `~~~` 不会触发删除线。
-
-### 裸 URL 自动链接
-
-GFM 会把裸 URL 自动转为链接，不需要 `<url>` 或 `[text](url)`：
-
-```markdown
-详见 https://docs.github.com/en/get-started
+```javascript
+const siteTitle = 'My Blog'
 ```
 
-- 这是 CommonMark 不具备、GFM 专门扩展的行为。
-
----
-
-## GitHub 原生但不在 GFM 规范文本中的 README 能力
-
-> 以下属于 GitHub 平台对 Markdown 文件的**原生后处理/集成能力**，不是 CommonMark / GFM 文本规范本身的一部分。在非 GitHub 渲染器中可能失效。
-
-### 数学公式（MathJax）
-
-- GitHub 原生支持 LaTeX 数学表达式，由 **MathJax** 渲染。
-- 行内：`$E = mc^2$`
-- 块级：`$$ \int_a^b f(x)\,dx $$`
-
-### Mermaid 图表
-
-- 在 ` ```mermaid ` 围栏代码块中原生渲染流程图、时序图等：
-
-```markdown
-```mermaid
-flowchart LR
-    A[用户请求] --> B{缓存命中?}
-    B -- 是 --> C[返回缓存]
-    B -- 否 --> D[查询数据库]
-```
-```
-```
-
-- GFM 规范文本未定义 Mermaid 语法本身，这是 GitHub 渲染管线的扩展。
-
-### 永久链接（Permalink）
-
-- 在 GitHub 文件页面按 **`Y`**，URL 从分支名（如 `main`）切换为**当前提交的 commit ID**，得到指向该文件精确版本的永久链接。
-- 引用其他文件时，若希望内容不随分支变动失效，应使用 commit 版本 URL，而非 `blob/main/...`。
-
----
-
-## GitHub 对 README 内容的官方界定
-
-GitHub Docs 明确 README 应说明：
-
-- 项目做什么
-- 为什么有用
-- 如何开始使用
-- 在哪里获得帮助
-- 由谁维护
-
-同时明确边界：
-
-> “A README should only contain information necessary for developers to get started using and contributing to your project. Longer documentation is best suited for wikis.”
-
-即：
-
-- **README 只放“上手所必需”的信息**
-- **长篇文档放 Wiki**
-
----
-
-## 综合模板
+## 模板
 
 ```markdown
 <div align="center">
 
-<img src=".github/assets/icon.png" alt="logo" width="64" />
+<img src="./.github/assets/logo.png" alt="项目 Logo" width="96">
 
 # my-project
 
-一个轻量级的配置加载库，支持多格式合并与热重载。
+一句话说明项目解决什么问题。
 
-[![CI](https://github.com/user/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/user/repo/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/my-project)](https://www.npmjs.com/package/my-project)
-[![License](https://img.shields.io/github/license/user/repo)](./LICENSE)
+[![构建](https://github.com/user/repo/actions/workflows/ci.yml/badge.svg)](https://github.com/user/repo/actions/workflows/ci.yml) [![版本](https://img.shields.io/github/v/release/user/repo)](https://github.com/user/repo/releases) [![许可证](https://img.shields.io/github/license/user/repo)](./LICENSE)
 
 </div>
 
-> [!IMPORTANT]
-> v2.0 起最低 Node.js 版本为 18，低于此版本请锁定 `my-project@1.x`。
+## 特性
+
+- 功能一：说明用户能得到什么
+- 功能二：说明适用场景
+- 功能三：说明与同类工具的区别
 
 ## 快速开始
 
 ```bash
-npm install my-project
+npm install
+npm run dev
 ```
 
-```js
-import { load } from 'my-project'
-const config = await load('./config')  // 默认合并 yaml / json / toml
+## 技术栈
+
+- 构建工具：Vite
+- 运行环境：Node.js
+- 内容格式：Markdown
+
+## 项目结构
+
+```text
+.
+├── src/
+├── docs/
+├── package.json
+└── README.md
+```
+
+## 许可证
+
+[MIT](./LICENSE)
 ```

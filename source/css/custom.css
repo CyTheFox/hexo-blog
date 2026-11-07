@@ -571,3 +571,16 @@
     border-radius: 4px;
   }
 /* <<< console big-player layout */
+
+/* 闲言碎语正文（markdown 渲染后的多段内容） */
+#bber .datacont > * + * {
+  margin-top: 0.55rem;
+}
+#bber .datacont img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+#bber .datacont a {
+  color: var(--anzhiyu-main);
+  text-decoration: underline;
+}

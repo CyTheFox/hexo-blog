@@ -1,110 +1,143 @@
 'use strict';
 
-/* 闲言碎语（短文）数据桥接
+/* 闲言碎语（短文）
  *
- * 后台 Decap CMS 的 file collection 只能编辑「对象为根」的 YAML，
- * 而主题 essay.pug / bbTimeList.pug 要求 site.data.essay 是数组。
- * 所以在模板渲染前，把 source/_data/essay_admin.yml 转成模板要的形状注入进去。
+ * 一条短文 = source/_essays/<slug>.md，后台用和文章完全相同的 Vditor 编辑器。
+ * 构建时把目录里的 md 读成 site.data.essay（主题 essay.pug 要的数组形状）。
  */
 
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+const frontMatter = require('hexo-front-matter');
 
-const SRC = path.join(hexo.source_dir, '_data', 'essay_admin.yml');
+const TZ = hexo.config.timezone || 'Asia/Shanghai';
+const LIMIT = 20;          // 单页最多展示条数
+const HOME_ESSAY = false;  // 首页「即刻」滚动条，改 true 可恢复
+const ROOT = (hexo.config.root || '/').replace(/\/+$/, '/');
 
-let cache = { mtime: 0, data: null };
+let cache = { key: null, group: null };
 
-// 后台/手写两种写法都可能出现：Date 对象、纯字符串、带时区的 ISO
-// 统一落成 "...Z"，让模板里的 toISOString() 与作者填的墙上时间一致
-function toIso(value) {
+// 主题模板会对 date 做 new Date(x).toISOString()，这里统一回写成「墙上时间」，
+// 避免时区换算后显示成 8 小时前的时刻。
+function wallClock(value) {
   if (value === undefined || value === null || value === '') return undefined;
-  if (value instanceof Date) return value.toISOString();
-  const s = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(s)) {
-    return new Date(s).toISOString();
-  }
-  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
-  if (!m) return s;
-  return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + (m[6] || '00') + '.000Z';
+  const d = value instanceof Date ? value : new Date(String(value));
+  if (isNaN(d.getTime())) return undefined;
+  const s = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  }).format(d);
+  return s.replace(' ', 'T') + '.000Z';
 }
 
-function loadEssayData() {
-  if (!fs.existsSync(SRC)) {
-    hexo.log.warn('[essay_sync] 缺少 %s，闲言碎语页面将为空', SRC);
-    return null;
+function getGroup() {
+  const dir = path.join(hexo.source_dir, '_essays');
+  let files = [];
+  if (fs.existsSync(dir)) {
+    files = fs.readdirSync(dir).filter(function (f) { return /\.md$/i.test(f); }).sort();
   }
-  const stat = fs.statSync(SRC);
-  if (cache.data && cache.mtime === stat.mtimeMs) return cache.data;
 
-  const raw = yaml.load(fs.readFileSync(SRC, 'utf8')) || {};
-  const list = Array.isArray(raw.essay_list) ? raw.essay_list : [];
+  const key = files.map(function (f) {
+    try { return f + ':' + fs.statSync(path.join(dir, f)).mtimeMs; } catch (e) { return f; }
+  }).join('|');
+  if (cache.key === key && cache.group) return cache.group;
 
   const fallbackDate = new Date().toISOString();
   let missingDate = 0;
 
-  const essayList = list.filter(function (item) {
-    return item && item.content;
-  }).map(function (item) {
-    const out = { content: String(item.content) };
-    let date = toIso(item.date);
-    if (!date || isNaN(new Date(date).getTime())) {
-      // 主题模板无条件执行 new Date(item.date).toISOString()，缺日期会整页渲染失败
+  const list = files.map(function (name) {
+    const full = path.join(dir, name);
+    const raw = fs.readFileSync(full, 'utf8');
+    let fm = {};
+    try { fm = frontMatter.parse(raw) || {}; } catch (e) {
+      hexo.log.warn('[essay_sync] %s 解析失败: %s', name, e.message);
+    }
+
+    const body = String(fm._content || '').trim();
+    let html = '';
+    if (body) {
+      try {
+        html = hexo.render.renderSync({ text: body, engine: 'markdown' });
+      } catch (e) {
+        hexo.log.warn('[essay_sync] %s 正文渲染失败: %s', name, e.message);
+      }
+    }
+    // 正文里的 /img/xxx 之类根路径要补上站点前缀（本站是 /blog/）
+    // 正文里的站内链接要补站点前缀；<img> 由主题的懒加载过滤器自己套 url_for，不能重复加
+    if (html && ROOT !== '/') {
+      html = html.replace(/href="\/(?!\/)/g, 'href="' + ROOT);
+    }
+
+    const item = { content: body, html: html };
+    const date = wallClock(fm.date);
+    if (date) {
+      item.date = date;
+    } else {
       missingDate += 1;
-      date = fallbackDate;
+      item.date = fallbackDate;
     }
-    out.date = date;
-    if (item.from) out.from = item.from;
-    if (item.address) out.address = item.address;
-    if (item.link) out.link = item.link;
-    if (Array.isArray(item.image) && item.image.length) out.image = item.image.filter(Boolean);
-    if (Array.isArray(item.video) && item.video.length) out.video = item.video.filter(Boolean);
-    if (item.aplayer && item.aplayer.id) {
-      out.aplayer = { id: item.aplayer.id, server: item.aplayer.server || 'netease' };
-    }
-    return out;
+    if (fm.from) item.from = fm.from;
+    if (fm.address) item.address = fm.address;
+    if (fm.link) item.link = fm.link;
+    if (Array.isArray(fm.image) && fm.image.length) item.image = fm.image.filter(Boolean);
+    if (Array.isArray(fm.video) && fm.video.length) item.video = fm.video.filter(Boolean);
+    return item;
   });
 
   if (missingDate) {
-    hexo.log.warn('[essay_sync] %d 条短文缺少有效日期，已用构建时间兜底', missingDate);
+    hexo.log.warn('[essay_sync] %d 条短文缺少有效 date，已用构建时间兜底', missingDate);
   }
 
-  cache = {
-    mtime: stat.mtimeMs,
-    data: [{
-      title: raw.title || '闲言碎语',
-      subTitle: raw.subTitle || '',
-      tips: raw.tips || '',
-      buttonText: raw.buttonText || '全部短文',
-      buttonLink: raw.buttonLink || '/essay/',
-      top_background: raw.top_background || undefined,
-      limit: Number(raw.limit) || 20,
-      home_essay: raw.home_essay !== false,
-      essay_list: essayList
-    }]
+  list.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+
+  const group = {
+    title: '闲言碎语',
+    subTitle: '',
+    tips: '',
+    buttonText: '全部短文',
+    buttonLink: '/essay/',
+    limit: LIMIT,
+    home_essay: HOME_ESSAY,
+    essay_list: list
   };
-  return cache.data;
+
+  cache = { key: key, group: group };
+  return group;
 }
 
 hexo.extend.filter.register('template_locals', function (locals) {
   if (!locals || !locals.site) return locals;
   const data = locals.site.data || (locals.site.data = {});
-  if (!data.essay) {
-    const essay = loadEssayData();
-    if (essay) data.essay = essay;
-  }
+  if (!data.essay) data.essay = [getGroup()];
   return locals;
 });
 
-// 短文页顶部那张大卡片（标题/副标题/说明/全部短文按钮）不需要展示，
-// 渲染后直接剥掉；列表为空时连同「只展示最近 N 条短文」一起清掉。
 hexo.extend.filter.register('after_render:html', function (str) {
   if (str.indexOf('essayPage') === -1) return str;
 
-  var out = str.replace(/<div class="author-content[^"]*essayPage[^>]*>[\s\S]*?(?=<div id="bber")/, '');
+  const list = getGroup().essay_list;
 
-  if (out.indexOf('class="bber-item"') === -1) {
-    out = out.replace(/<div id="bber-tips"[\s\S]*?<\/div>/, '');
+  // 顶部大卡片（标题/副标题/说明/按钮）不需要，整块剥掉
+  let out = str.replace(/<div class="author-content[^"]*essayPage[^>]*>[\s\S]*?(?=<div id="bber")/, '');
+
+  // 一条都没有时，连「只展示最近 N 条短文」也去掉
+  if (!list.length) {
+    return out.replace(/<div id="bber-tips"[\s\S]*?<\/div>/, '');
   }
-  return out;
+
+  // 正文是 markdown，模板只做了纯文本转义，这里换成渲染好的 HTML。
+  // 注意主题把配图/视频容器嵌在 <p class="datacont"> 内部，必须原样保留尾部。
+  let i = 0;
+  out = out.replace(/<p class="datacont">([\s\S]*?)<\/p>/g, function (m, inner) {
+    const item = list[i++];
+    if (!item) return m;
+    const galleryMatch = inner.match(/<div class="bber-container-img">[\s\S]*$/);
+    const gallery = galleryMatch ? galleryMatch[0] : '';
+    return '<div class="datacont">' + item.html + gallery + '</div>';
+  });
+
+  // 「引用回复」按钮的 onclick 里原样嵌了正文，多行/引号会打断 JS，去掉
+  return out.replace(/<div class="bber-reply"[^>]*>[\s\S]*?<\/div>/g, '');
 });

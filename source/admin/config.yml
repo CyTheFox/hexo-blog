@@ -2,7 +2,7 @@ backend:
   name: github
   repo: CyTheFox/hexo-blog
   branch: main
-  base_url: https://ali-bj.tail695e0e.ts.net
+  base_url: https://bythefox.xyz
   auth_endpoint: api/auth
 
 media_folder: "source/img"

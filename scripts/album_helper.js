@@ -6,7 +6,7 @@ const path = require('path');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif']);
 
 // QQ robot sticker library directory on server
-const STICKERS_DIR = '/home/dsbot/qq-workspace/stickers/files';
+const STICKERS_DIR = '/home/blog/stickers/files';
 
 function scanStickerImages(dir) {
   const list = [];

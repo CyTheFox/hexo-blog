@@ -592,3 +592,8 @@
 #loading-box .loading-image-dot {
   transform: translate(-50%, -50%) !important;
 }
+
+/* 首页磁贴：去掉文字下方那条白色短横线（主题 a.categoryButton:after） */
+a.categoryButton::after {
+  display: none !important;
+}

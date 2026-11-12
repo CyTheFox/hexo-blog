@@ -2,7 +2,7 @@
 
 /*
  * 把首页顶部「随便逛逛」大 banner 换成 3x3 小磁贴。
- * 第一个「想法」跳 /notes/，其余 8 个都叫「分类」，跳分类页。
+ * 第一个「想法」跳 /notes/，第二个 HIOPLE 跳 /notes/hiople/，其余 7 个都叫「分类」，跳分类页。
  * 复用主题 .categoryButton / .categoryItem 的视觉（渐变、图标、下划线、彩色投影）。
  */
 
@@ -29,10 +29,11 @@ hexo.extend.filter.register('after_render:html', function (str) {
 
   const root = hexo.config.root || '/';
   const cat = root + 'categories/';
-  const colors = ['red', 'green', 'blue'];
+  const colors = ['green', 'blue', 'red'];
 
   let tiles = TILE('\u60f3\u6cd5', '/notes/', 'anzhiyu-icon-paper-plane', 'blue');
-  for (let i = 0; i < 8; i++) {
+  tiles += TILE('HIOPLE', '/notes/hiople/', 'anzhiyu-icon-book', 'red');
+  for (let i = 0; i < 7; i++) {
     const c = colors[i % 3];
     tiles += TILE('\u5206\u7c7b', cat, 'anzhiyu-icon-cube', c);
   }

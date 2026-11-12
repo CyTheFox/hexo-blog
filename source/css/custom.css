@@ -597,3 +597,11 @@
 a.categoryButton::after {
   display: none !important;
 }
+
+/* 首页「精品推荐」：去掉封面大卡 #todayCard，直接摊开 6 篇推荐文章 */
+.topGroup .todayCard {
+  display: none !important;
+}
+.topGroup .recent-post-item {
+  display: flex !important;
+}

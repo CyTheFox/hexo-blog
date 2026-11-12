@@ -17,7 +17,6 @@ menu:
 
   # 关于:
   #   关于本人: /about/ || anzhiyu-icon-paper-plane
-    闲言碎语: /essay/ || anzhiyu-icon-lightbulb
   #   随便逛逛: javascript:toRandomPost() || anzhiyu-icon-shoe-prints1
 
 # nav相关配置
@@ -1246,7 +1245,6 @@ inject:
     - <script defer src="https://cdn.cbd.int/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],throwOnError:false});"></script>
     - <script>document.addEventListener("pjax:complete",function(){if(window.renderMathInElement){renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}],throwOnError:false});}});</script>
     - <script defer src="/blog/js/post_music.js"></script>
-    - <script defer src="/blog/js/essay_bar_link.js"></script>
     # 自定义js
     # - <script src="/js/xxx"></script>
 

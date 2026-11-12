@@ -584,3 +584,11 @@
   color: var(--anzhiyu-main);
   text-decoration: underline;
 }
+
+/* 开屏加载动画：不要头像，只留小圆点（2026-11-12 用户要求） */
+#loading-box .loading-img {
+  display: none !important;
+}
+#loading-box .loading-image-dot {
+  transform: translate(-50%, -50%) !important;
+}

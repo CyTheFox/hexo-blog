@@ -90,9 +90,23 @@ hexo.extend.filter.register('before_post_render', function(data) {
   Array.prototype.forEach.call(grid.querySelectorAll('.emotion-card[data-emotion="1"]'), function (el) { el.remove(); });
   var root = ${JSON.stringify(root)};
   var exts = /\\.(jpe?g|png|gif|webp|avif)$/i;
-  var known = new Set(Array.prototype.map.call(grid.querySelectorAll('img'), function (i) {
-    return decodeURIComponent(i.getAttribute('src') || '');
-  }));
+  // 主题的懒加载过滤器会把 src 换成 base64 占位图、真实地址塞进 data-lazy-src，
+  // 所以按「文件名」去重（不能按完整 URL，否则构建时已渲染的贴纸会再插一遍）。
+  function stickerName(img) {
+    var cand = [img.getAttribute('data-lazy-src'), img.getAttribute('data-original'), img.getAttribute('src')];
+    for (var c = 0; c < cand.length; c++) {
+      var v = cand[c];
+      if (!v) continue;
+      var m = /\\/stickers\\/([^?#]+)$/.exec(decodeURIComponent(v));
+      if (m) return m[1];
+    }
+    return null;
+  }
+  var known = new Set();
+  Array.prototype.forEach.call(grid.querySelectorAll('img'), function (i) {
+    var n = stickerName(i);
+    if (n) known.add(n);
+  });
   var res, list;
   try {
     res = await fetch(root + 'stickers/?t=' + Date.now());
@@ -104,9 +118,9 @@ hexo.extend.filter.register('before_post_render', function(data) {
   list.forEach(function (it) {
     if (it.type !== 'file' || !exts.test(it.name)) return;
     if (it.size && it.size < 500) return; // skip dummy test files
+    if (known.has(it.name)) return;
+    known.add(it.name);
     var url = root + 'stickers/' + encodeURIComponent(it.name);
-    if (known.has(url) || known.has('/' + url)) return;
-    known.add(url);
     var card = document.createElement('div');
     card.className = 'emotion-card';
     card.setAttribute('data-emotion', '1');

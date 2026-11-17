@@ -571,3 +571,37 @@
     border-radius: 4px;
   }
 /* <<< console big-player layout */
+
+/* 闲言碎语正文（markdown 渲染后的多段内容） */
+#bber .datacont > * + * {
+  margin-top: 0.55rem;
+}
+#bber .datacont img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+#bber .datacont a {
+  color: var(--anzhiyu-main);
+  text-decoration: underline;
+}
+
+/* 开屏加载动画：不要头像，只留小圆点（2026-11-12 用户要求） */
+#loading-box .loading-img {
+  display: none !important;
+}
+#loading-box .loading-image-dot {
+  transform: translate(-50%, -50%) !important;
+}
+
+/* 首页磁贴：去掉文字下方那条白色短横线（主题 a.categoryButton:after） */
+a.categoryButton::after {
+  display: none !important;
+}
+
+/* 首页「精品推荐」：去掉封面大卡 #todayCard，直接摊开 6 篇推荐文章 */
+.topGroup .todayCard {
+  display: none !important;
+}
+.topGroup .recent-post-item {
+  display: flex !important;
+}

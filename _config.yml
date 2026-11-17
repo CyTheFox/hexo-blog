@@ -3,8 +3,8 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: ByTheFox个人小站
-subtitle: 技术笔记与生活随笔
+title: Dimensional Space
+subtitle: ''
 description: ''
 keywords:
 author: The Fox
@@ -13,7 +13,7 @@ timezone: Asia/Shanghai
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
-url: http://59.110.213.166/blog
+url: https://bythefox.xyz/blog
 root: /blog/
 permalink: :year/:month/:day/:title/
 permalink_defaults:

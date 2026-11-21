@@ -469,6 +469,133 @@
       window.addEventListener('scroll', updateBarPosition, true);
     }
 
+    // 增强 Vditor 粘贴：自动保留网页 KaTeX/MathJax 公式，并将 \[...\] / \(...\) 转为 $$...$$ / $...$
+    function installMathPasteEnhancer(vditor, container) {
+      if (!vditor || !container || container.__mathPasteInstalled) return;
+      container.__mathPasteInstalled = true;
+      var bypass = false;
+
+      function normalizeTexDelimiters(text) {
+        if (!text) return text;
+        var codes = [];
+        text = text.replace(/(^|\n)([ \t]*)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\2\3[ \t]*(?=\n|$)/g, function(m) {
+          codes.push(m);
+          return 'VDITORCODEPH' + (codes.length - 1) + 'ENDPH';
+        });
+        text = text.replace(/(`+)([^\n`]|[\s\S]*?[^\n`])\1/g, function(m) {
+          codes.push(m);
+          return 'VDITORCODEPH' + (codes.length - 1) + 'ENDPH';
+        });
+        text = text.replace(/\\\[([\s\S]*?)\\\]/g, function(_, inner) {
+          return '\n\n$$\n' + inner.trim() + '\n$$\n\n';
+        });
+        text = text.replace(/\\\(([\s\S]*?)\\\)/g, function(_, inner) {
+          return '$' + inner.trim() + '$';
+        });
+        for (var i = 0; i < codes.length; i++) {
+          text = text.replace('VDITORCODEPH' + i + 'ENDPH', function() { return codes[i]; });
+        }
+        return text;
+      }
+
+      function extractMathFromHtml(html) {
+        if (!html) return null;
+        var hasMathDom = /class="[^"]*\bkatex\b|<mjx-container|encoding="application\/x-tex"|data-tex=|data-formula=/i.test(html);
+        if (!hasMathDom) return null;
+
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(html, 'text/html');
+        var mathSlots = [];
+        function putMath(el, tex, isDisplay) {
+          if (!tex) return;
+          var idx = mathSlots.length;
+          mathSlots.push({ tex: tex.trim(), display: !!isDisplay });
+          var ph = doc.createTextNode('VDITORMATHPH' + idx + 'ENDPH');
+          el.parentNode.replaceChild(ph, el);
+        }
+
+        // KaTeX display & inline nodes
+        doc.querySelectorAll('.katex-display').forEach(function(el) {
+          var ann = el.querySelector('annotation[encoding="application/x-tex"]');
+          if (ann) putMath(el, ann.textContent, true);
+        });
+        doc.querySelectorAll('.katex').forEach(function(el) {
+          if (!el.parentNode) return;
+          var ann = el.querySelector('annotation[encoding="application/x-tex"]');
+          if (ann) putMath(el, ann.textContent, false);
+        });
+        // Nodes carrying explicit data-tex / data-formula
+        doc.querySelectorAll('[data-tex], [data-formula]').forEach(function(el) {
+          if (!el.parentNode) return;
+          var tex = el.getAttribute('data-tex') || el.getAttribute('data-formula');
+          var isDisp = el.tagName === 'DIV' || el.getAttribute('data-display') === 'true' || el.classList.contains('math-block');
+          if (tex) putMath(el, tex, isDisp);
+        });
+        // Script math/tex tags
+        doc.querySelectorAll('script[type^="math/tex"]').forEach(function(el) {
+          if (!el.parentNode) return;
+          var isDisp = /mode=display/i.test(el.type || '');
+          putMath(el, el.textContent, isDisp);
+        });
+
+        if (mathSlots.length === 0) return null;
+
+        var md = (typeof vditor.html2md === 'function') ? vditor.html2md(doc.body.innerHTML) : doc.body.textContent;
+        for (var i = 0; i < mathSlots.length; i++) {
+          var slot = mathSlots[i];
+          var rep = slot.display ? ('\n\n$$\n' + slot.tex + '\n$$\n\n') : ('$' + slot.tex + '$');
+          md = md.replace('VDITORMATHPH' + i + 'ENDPH', function() { return rep; });
+        }
+        return normalizeTexDelimiters(md).trim();
+      }
+
+      container.addEventListener('paste', function(e) {
+        if (bypass) return;
+        var cd = e.clipboardData;
+        if (!cd) return;
+        if (cd.files && cd.files.length > 0) return;
+
+        var html = cd.getData('text/html') || '';
+        var plain = cd.getData('text/plain') || '';
+        var targetMd = null;
+
+        // 1) Try rescuing rendered KaTeX / data-tex formulas from HTML clipboard
+        var rescued = extractMathFromHtml(html);
+        if (rescued) {
+          targetMd = rescued;
+        } else if (plain) {
+          // 2) If plain text contains LaTeX delimiters (\[...\], \(...\), $$...$$, $...$)
+          //    and HTML is NOT already Vditor's own math DOM, force plain Markdown paste so Lute won't escape it
+          var hasLatexInPlain = /\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|(?<!\\)\$(?!\s)[^$\n]+?(?<!\s)\$/.test(plain);
+          var isVditorNativeMathHtml = /class="[^"]*\blanguage-math\b/i.test(html);
+          if (hasLatexInPlain && !isVditorNativeMathHtml) {
+            targetMd = normalizeTexDelimiters(plain);
+          }
+        }
+
+        if (targetMd !== null) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          var targetEl = e.target;
+          try {
+            var dt = new DataTransfer();
+            dt.setData('text/plain', targetMd);
+            bypass = true;
+            var synthetic = new ClipboardEvent('paste', {
+              clipboardData: dt,
+              bubbles: true,
+              cancelable: true
+            });
+            targetEl.dispatchEvent(synthetic);
+          } catch(err) {
+            document.execCommand('insertText', false, targetMd);
+          } finally {
+            bypass = false;
+          }
+        }
+      }, true);
+    }
+
     // 自定义 Vditor 控制组件
     var VditorControl = window.createClass({
       componentDidMount: function() {
@@ -629,6 +756,7 @@
           },
           after: function() {
             self.isLoaded = true;
+            installMathPasteEnhancer(self.vditor, self.container);
             initImageFloatingBar(self.vditor, self.container, function(newVal) {
               self.isInternalChange = true;
               if (self.props.onChange) {

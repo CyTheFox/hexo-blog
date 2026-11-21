@@ -2,6 +2,7 @@
 title: CRC 校验和
 copyright_author: HIOPLE
 date: 2026-11-21 14:55:00
+cover: /img/crc.png
 tags:
   - 技术
 categories:

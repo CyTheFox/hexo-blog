@@ -7,8 +7,6 @@
   
   <!-- Vditor CSS -->
   <link rel="stylesheet" href="/blog/vditor/dist/index.css" />
-  <!-- KaTeX CSS -->
-  <link rel="stylesheet" href="/blog/vditor/dist/js/katex/katex.min.css" />
 
   <style>
     /* minimal: only style the Vditor surface if it is ever mounted */
@@ -90,16 +88,12 @@
   <!-- Vditor Core JS -->
   <script src="/blog/vditor/dist/index.min.js"></script>
 
-  <!-- KaTeX Core & Auto-render -->
-  <script src="https://cdn.cbd.int/katex@0.16.9/dist/katex.min.js"></script>
-
   <!-- Decap CMS -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
 
   <script>
-    // 注册 KaTeX 样式表到 Decap CMS 预览区
-    CMS.registerPreviewStyle("/blog/vditor/js/katex/katex.min.css");
-    CMS.registerPreviewStyle("/blog/vditor/index.css");
+    // 注册 Vditor 样式表到 Decap CMS 预览区
+    CMS.registerPreviewStyle("/blog/vditor/dist/index.css");
 
     // 获取当前 Decap CMS 登录会话中的 GitHub Token
     function getGithubToken() {
@@ -491,7 +485,24 @@
             isPreview: false
           },
           minHeight: 450,
-          placeholder: '请输入文章正文内容 (支持 Markdown、KaTeX 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片，点击图片可呼出悬浮排版条)...',
+          placeholder: '请输入文章正文内容 (支持 Markdown、LaTeX / MathJax 公式、代码高亮、表格、Mermaid 流程图，支持剪贴板直接粘贴图片，点击图片可呼出悬浮排版条)...',
+          preview: {
+            math: {
+              engine: 'MathJax',
+              inlineDigit: true,
+              mathJaxOptions: {
+                tex: {
+                  macros: {},
+                  tags: 'ams',
+                  processEscapes: true,
+                  processEnvironments: true
+                },
+                svg: {
+                  fontCache: 'local'
+                }
+              }
+            }
+          },
           counter: {
             enable: true
           },
@@ -691,6 +702,21 @@
             toc: true,
             mark: true,
             footnotes: true
+          },
+          math: {
+            engine: 'MathJax',
+            inlineDigit: true,
+            mathJaxOptions: {
+              tex: {
+                macros: {},
+                tags: 'ams',
+                processEscapes: true,
+                processEnvironments: true
+              },
+              svg: {
+                fontCache: 'local'
+              }
+            }
           }
         });
       },
@@ -756,21 +782,32 @@
     // 注册 Widget 到 Decap CMS
     CMS.registerWidget('vditor', VditorControl, VditorPreview);
 
-    // 监听右侧实时预览 iframe，处理额外公式渲染
+    // 监听右侧实时预览 iframe，同步 MathJax SVG 样式到预览区
     (function watchPreview() {
-      function renderMathInDoc(doc) {
-        if (!doc || !doc.body || !window.renderMathInElement) return;
-        try {
-          window.renderMathInElement(doc.body, {
-            delimiters: [
-              { left: "$$", right: "$$", display: true },
-              { left: "$", right: "$", display: false },
-              { left: "\\(", right: "\\)", display: false },
-              { left: "\\[", right: "\\]", display: true }
-            ],
-            throwOnError: false
-          });
-        } catch(e) {}
+      function syncMathJaxStyles(doc) {
+        if (!doc || !doc.head) return;
+        var baseStyle = doc.getElementById('dsh-mjx-base-style');
+        if (!baseStyle) {
+          baseStyle = doc.createElement('style');
+          baseStyle.id = 'dsh-mjx-base-style';
+          baseStyle.textContent =
+            'mjx-container[jax="SVG"][display="true"]{display:block;text-align:center;margin:0.8em 0;overflow-x:auto;}' +
+            'mjx-container[jax="SVG"]>svg{max-width:100%;height:auto;}' +
+            '.language-math{overflow-x:auto;}';
+          doc.head.appendChild(baseStyle);
+        }
+        var parentMjx = document.getElementById('MJX-SVG-styles');
+        if (parentMjx) {
+          var childMjx = doc.getElementById('MJX-SVG-styles');
+          if (!childMjx) {
+            childMjx = doc.createElement('style');
+            childMjx.id = 'MJX-SVG-styles';
+            doc.head.appendChild(childMjx);
+          }
+          if (childMjx.textContent !== parentMjx.textContent) {
+            childMjx.textContent = parentMjx.textContent;
+          }
+        }
       }
 
       var observer = new MutationObserver(function() {
@@ -778,32 +815,20 @@
         iframes.forEach(function(iframe) {
           try {
             var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-            if (doc && doc.body && !doc.__katexAttached) {
-              doc.__katexAttached = true;
-              if (!doc.querySelector('link[href*="katex"]')) {
-                var link = doc.createElement("link");
-                link.rel = "stylesheet";
-                link.href = "/blog/vditor/js/katex/katex.min.css";
-                doc.head.appendChild(link);
+            if (doc && doc.body) {
+              syncMathJaxStyles(doc);
+              if (!doc.__mathjaxAttached) {
+                doc.__mathjaxAttached = true;
+                new MutationObserver(function() {
+                  syncMathJaxStyles(doc);
+                }).observe(doc.body, { childList: true, subtree: true });
               }
-              var timer = null;
-              var debouncedRender = function() {
-                clearTimeout(timer);
-                timer = setTimeout(function() {
-                  renderMathInDoc(doc);
-                }, 100);
-              };
-              new MutationObserver(debouncedRender).observe(doc.body, {
-                childList: true,
-                subtree: true,
-                characterData: true
-              });
-              renderMathInDoc(doc);
             }
           } catch(err) {}
         });
       });
       observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.head, { childList: true, subtree: true, characterData: true });
     })();
   </script>
 

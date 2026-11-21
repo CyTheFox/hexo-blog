@@ -605,3 +605,20 @@ a.categoryButton::after {
 .topGroup .recent-post-item {
   display: flex !important;
 }
+
+/* MathJax SVG 容器样式（2026-11-21 切换自 KaTeX） */
+.math-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+  margin: 0.8em 0;
+}
+mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  text-align: center;
+  margin: 0.25em 0;
+}
+mjx-container[jax="SVG"] > svg {
+  max-width: 100%;
+  height: auto;
+}

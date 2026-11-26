@@ -1,5 +1,6 @@
 ---
 title: AminOS_x86_64.iso：常识
+copyright_author: HIOPLE
 date: 2026-11-26 10:28:00
 cover: /img/aminos-cover.png
 tags:
